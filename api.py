@@ -12,9 +12,15 @@ app = Flask(__name__)
 
 # Production configuration: set DB_URL, DB_SECRET and SESSION_SECRET in Vercel.
 # The selected database is cash-5355f (the first database identified in the project).
-DB_URL = os.environ.get("DB_URL", "https://free-9d3b4-default-rtdb.firebaseio.com").rstrip("/")
+# Firebase Database Configuration
+DB_URL = os.environ.get(
+    "DB_URL",
+    "https://cash-5355f-default-rtdb.firebaseio.com"
+).rstrip("/")
+
 DB_SECRET = os.environ.get("DB_SECRET", "FwOUpZowVYHJmRZOGefTQAszzoccpsGg3YhuTu0O")
-app.secret_key = os.environ.get("SESSION_SECRET")
+
+app.secret_key = os.environ.get("SESSION_SECRET", "jHcSD4URxyDtKZ-vLH7jpHMAf3sWiOxJM86HMEmV43ykFG27sWA9BNJqW94mHjcd")
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SECURE=True,
