@@ -11,16 +11,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 
 # Production configuration: set DB_URL, DB_SECRET and SESSION_SECRET in Vercel.
-# The selected database is cash-5355f (the first database identified in the project).
-# Firebase Database Configuration
-DB_URL = os.environ.get(
-    "DB_URL",
-    "https://cash-5355f-default-rtdb.firebaseio.com"
-).rstrip("/")
-
-DB_SECRET = os.environ.get("DB_SECRET", "FwOUpZowVYHJmRZOGefTQAszzoccpsGg3YhuTu0O")
-
-app.secret_key = os.environ.get("SESSION_SECRET", "jHcSD4URxyDtKZ-vLH7jpHMAf3sWiOxJM86HMEmV43ykFG27sWA9BNJqW94mHjcd")
+# API database target: income-point-7ddf3 (Firebase project supplied for this update).
+DB_URL = os.environ.get("DB_URL", "https://income-point-7ddf3-default-rtdb.firebaseio.com").rstrip("/")
+DB_SECRET = os.environ.get("DB_SECRET", "UFR7TWmxoXYPU06AEgDNRnxc3adNUK41Y4neUrRQ")
+app.secret_key = os.environ.get("SESSION_SECRET", "_CCwRwHrD9yL4W34Jx6CF29Vdt0dAN-fiE-Zhp3m06eP1qD4vlNlkbQ-lEaCHarN")
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SECURE=True,
@@ -68,6 +62,29 @@ def db_request(path, method="GET", data=None):
         app.logger.exception("Database request failed")
         raise RuntimeError("Database service unavailable") from exc
 
+
+def db_change_balance(uid, delta):
+    """Atomically change a user's balance using Firebase ETag compare-and-swap."""
+    if not DB_SECRET:
+        raise RuntimeError("DB_SECRET is not configured")
+    url = f"{DB_URL}/users/{requests.utils.quote(str(uid), safe='')}/balance.json"
+    for _ in range(8):
+        response = requests.get(url, params={"auth": DB_SECRET}, headers={"X-Firebase-ETag": "true"}, timeout=(5, 15))
+        response.raise_for_status()
+        etag = response.headers.get("ETag")
+        current = response.json()
+        current = float(current or 0)
+        updated = round(current + float(delta), 2)
+        if updated < 0:
+            return None
+        write = requests.put(url, params={"auth": DB_SECRET}, json=updated,
+                             headers={"if-match": etag or "null", "Content-Type": "application/json"},
+                             timeout=(5, 15))
+        if write.status_code == 412:
+            continue
+        write.raise_for_status()
+        return updated
+    raise RuntimeError("Balance update conflict; please retry")
 
 def sanitize_input(text, type="text"):
     if type == "username":
@@ -188,7 +205,10 @@ def dashboard():
     if not uid: return jsonify({})
     
     user_data = db_request(f"users/{uid}", "GET")
-    settings = db_request("admin", "GET")
+    settings_raw = db_request("admin", "GET") or {}
+    settings = {k: v for k, v in settings_raw.items() if k not in {"users", "gmailSettings", "referralChallenges"}}
+    if isinstance(settings_raw.get("gmailSettings"), dict):
+        settings["gmailSettings"] = {k: v for k, v in settings_raw["gmailSettings"].items() if k != "password"}
     tasks = db_request("tasks", "GET")
     plans = db_request("plans", "GET")
     challenges = db_request("admin/referralChallenges", "GET")
@@ -219,10 +239,11 @@ def dashboard():
 def gmail_page():
     uid = current_uid()
     subs = db_request(f"users/{uid}/gmailSubmissions", "GET")
-    g_settings = db_request("admin/gmailSettings", "GET")
+    g_settings = db_request("admin/gmailSettings", "GET") or {}
+    public_gmail_settings = {k: v for k, v in g_settings.items() if k not in {"password", "adminToken", "secret"}}
     return jsonify({
         "submissions": subs,
-        "settings": g_settings
+        "settings": public_gmail_settings
     })
 
 @app.route('/api/submit_gmail', methods=['POST'])
@@ -251,6 +272,40 @@ def submit_gmail():
     
     return jsonify({"success": True})
 
+@app.route('/api/deposit', methods=['POST'])
+@login_required
+def deposit():
+    d = request.get_json(silent=True) or {}
+    uid = current_uid()
+    try:
+        amount = round(float(d.get("amount", 0)), 2)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Invalid amount"}), 400
+    method = str(d.get("method", "")).strip()
+    trx_id = str(d.get("trxId", "")).strip()
+    screenshot = d.get("screenshotData", "")
+    settings = db_request("admin", "GET") or {}
+    minimum = float(settings.get("minDepositAmount", 50) or 50)
+    if amount < minimum or amount > 100000:
+        return jsonify({"success": False, "message": f"Deposit must be between {minimum} and 100000"}), 400
+    if method not in {"Bkash", "Nagad"} or len(trx_id) < 5 or len(trx_id) > 100:
+        return jsonify({"success": False, "message": "Enter a valid payment method and transaction ID"}), 400
+    if not isinstance(screenshot, str) or not screenshot.startswith("data:image/") or len(screenshot) > 1000000:
+        return jsonify({"success": False, "message": "Upload a valid screenshot smaller than 700 KB"}), 400
+    if not re.match(r"^data:image/(png|jpeg|jpg|webp);base64,", screenshot, re.I):
+        return jsonify({"success": False, "message": "Unsupported screenshot format"}), 400
+    transactions = db_request("transactions", "GET") or {}
+    if any(isinstance(t, dict) and t.get("trxId") == trx_id for t in transactions.values()):
+        return jsonify({"success": False, "message": "This transaction ID has already been submitted"}), 409
+    item = {
+        "userId": uid, "type": "Deposit", "amount": amount,
+        "details": f"{method} deposit", "method": method, "trxId": trx_id,
+        "screenshotData": screenshot, "date": datetime.now().isoformat(),
+        "status": "pending"
+    }
+    db_request("transactions", "POST", item)
+    return jsonify({"success": True, "message": "Deposit submitted for admin review"})
+
 @app.route('/api/history', methods=['GET'])
 @login_required
 def history():
@@ -259,8 +314,10 @@ def history():
     my_trx = []
     if all_trx:
         for v in all_trx.values():
-            if v.get('userId') == uid:
-                my_trx.append(v)
+            if isinstance(v, dict) and v.get('userId') == uid:
+                safe_item = dict(v)
+                safe_item.pop("screenshotData", None)
+                my_trx.append(safe_item)
     return jsonify(my_trx)
 
 @app.route('/api/withdraw', methods=['POST'])
@@ -274,9 +331,6 @@ def withdraw():
     
     user = db_request(f"users/{uid}", "GET") or {}
     settings = db_request("admin", "GET") or {}
-    
-    if not user.get('isAccountActive'):
-        return jsonify({"success": False, "message": "Inactive Account"})
         
     if amount <= 0:
         return jsonify({"success": False, "message": "Invalid amount"})
@@ -323,68 +377,81 @@ def activate():
 @app.route('/api/buy_plan', methods=['POST'])
 @login_required
 def buy_plan():
-    d = request.json
+    d = request.get_json(silent=True) or {}
     uid = current_uid()
-    plan_name = d.get('planName')
+    plan_name = str(d.get('planName', '')).strip()
     plans = db_request("plans", "GET") or {}
-    plan = next((p for p in plans.values() if p.get("name") == plan_name), None)
+    plan = next((p for p in plans.values() if isinstance(p, dict) and p.get("name") == plan_name), None)
     if not plan:
         return jsonify({"success": False, "message": "Plan not found"}), 404
     amount = float(plan.get("price", 0) or 0)
     if amount <= 0:
         return jsonify({"success": False, "message": "Plan price is invalid"}), 400
-    trx_id = d.get('trxId')
-    method = d.get('method')
-
-    transactions = db_request("transactions", "GET")
-    if transactions:
-        for t in transactions.values():
-            if t.get('userId') == uid and t.get('type') == 'Plan Purchase' and t.get('status') == 'pending':
-                return jsonify({"success": False, "message": "Request already pending"})
-
+    user = db_request(f"users/{uid}", "GET") or {}
+    if user.get("premiumPlan") and user.get("activePlanUntil"):
+        try:
+            if datetime.fromisoformat(user["activePlanUntil"]) > datetime.now():
+                return jsonify({"success": False, "message": "An earning plan is already active"}), 409
+        except (ValueError, TypeError):
+            pass
+    new_balance = db_change_balance(uid, -amount)
+    if new_balance is None:
+        return jsonify({"success": False, "message": "Insufficient wallet balance. Deposit funds first."}), 400
+    duration = max(int(plan.get("durationDays", 1) or 1), 1)
+    from datetime import timedelta
+    expiry = (datetime.now() + timedelta(days=duration)).isoformat()
+    db_request(f"users/{uid}/premiumPlan", "PUT", plan_name)
+    db_request(f"users/{uid}/activePlanUntil", "PUT", expiry)
+    db_request(f"users/{uid}/lastClaimDate", "PUT", "")
     trx = {
-        "userId": uid,
-        "type": "Plan Purchase",
-        "amount": amount,
-        "details": f"Plan: {plan_name}",
-        "trxId": trx_id,
-        "method": method,
-        "date": datetime.now().isoformat(),
-        "status": "pending"
+        "userId": uid, "type": "Plan Purchase", "amount": -amount,
+        "details": f"Plan: {plan_name}", "date": datetime.now().isoformat(),
+        "status": "approved"
     }
     db_request("transactions", "POST", trx)
-    return jsonify({"success": True})
+    return jsonify({"success": True, "newBalance": new_balance, "expiresAt": expiry})
+
+@app.route('/api/submit_task', methods=['POST'])
+@login_required
+def submit_task():
+    d = request.get_json(silent=True) or {}
+    uid = current_uid()
+    task_id = str(d.get("taskId", "")).strip()
+    category = str(d.get("category", "basic")).strip()
+    screenshot = d.get("screenshotData", "")
+    if category not in {"basic", "telegram"} or not task_id:
+        return jsonify({"success": False, "message": "Invalid task"}), 400
+    if not isinstance(screenshot, str) or not screenshot.startswith("data:image/") or len(screenshot) > 1000000:
+        return jsonify({"success": False, "message": "Upload a valid screenshot smaller than 700 KB"}), 400
+    if not re.match(r"^data:image/(png|jpeg|jpg|webp);base64,", screenshot, re.I):
+        return jsonify({"success": False, "message": "Unsupported screenshot format"}), 400
+    tasks = db_request(f"tasks/{category}", "GET") or {}
+    task = tasks.get(task_id)
+    if not isinstance(task, dict):
+        return jsonify({"success": False, "message": "Task not found"}), 404
+    try:
+        reward = float(task.get("reward", 0) or 0)
+    except (TypeError, ValueError):
+        reward = 0
+    if reward <= 0:
+        return jsonify({"success": False, "message": "Task reward is not configured"}), 400
+    submissions = db_request("taskSubmissions", "GET") or {}
+    for old in submissions.values():
+        if isinstance(old, dict) and old.get("userId") == uid and old.get("taskId") == task_id and old.get("category") == category and old.get("status") in {"pending", "processing", "approved"}:
+            return jsonify({"success": False, "message": "You have already submitted this task"}), 409
+    submission = {
+        "userId": uid, "taskId": task_id, "category": category,
+        "taskName": task.get("name") or task.get("title") or "Task",
+        "reward": reward, "screenshotData": screenshot,
+        "date": datetime.now().isoformat(), "status": "pending"
+    }
+    db_request("taskSubmissions", "POST", submission)
+    return jsonify({"success": True, "message": "Screenshot submitted for admin review"})
 
 @app.route('/api/complete_task', methods=['POST'])
 @login_required
 def complete_task():
-    d = request.json
-    uid = current_uid()
-    tid = d.get('taskId')
-    task_catalog = db_request("tasks", "GET") or {}
-    task = (task_catalog.get("basic", {}) or {}).get(tid)
-    if not task:
-        return jsonify({"success": False, "message": "Task not found"}), 404
-    reward = float(task.get("reward", 0) or 0)
-    if reward <= 0:
-        return jsonify({"success": False, "message": "Task reward is invalid"}), 400
-
-    user = db_request(f"users/{uid}", "GET") or {}
-    today = datetime.now().strftime("%Y-%m-%d")
-    
-    if user.get('lastTaskDate') == today:
-        return jsonify({"success": False, "message": "Daily limit reached"})
-    
-    completed = user.get('completedTasks', {})
-    if tid in completed:
-        return jsonify({"success": False, "message": "Already completed"})
-        
-    new_balance = user.get('balance', 0) + reward
-    db_request(f"users/{uid}/balance", "PUT", new_balance)
-    db_request(f"users/{uid}/lastTaskDate", "PUT", today)
-    db_request(f"users/{uid}/completedTasks/{tid}", "PUT", True)
-    
-    return jsonify({"success": True, "newBalance": new_balance})
+    return jsonify({"success": False, "message": "Task screenshots must be submitted for admin review"}), 410
 
 @app.route('/api/claim_daily', methods=['POST'])
 @login_required
@@ -397,6 +464,13 @@ def claim_daily():
     if not active_plan:
         return jsonify({"success": False, "message": "No active earning plan"}), 400
     duration = max(int(active_plan.get("durationDays", 0) or 0), 1)
+    expires_at = user.get("activePlanUntil")
+    if expires_at:
+        try:
+            if datetime.fromisoformat(expires_at) <= datetime.now():
+                return jsonify({"success": False, "message": "Your earning plan has expired"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"success": False, "message": "Plan expiry data is invalid"}), 400
     amount = float(active_plan.get("dailyIncome", 0) or 0)
     if amount <= 0:
         amount = (float(active_plan.get("price", 0) or 0) * 1.10) / duration
@@ -447,3 +521,12 @@ def logout():
     response = jsonify({"success": True})
     response.delete_cookie("session")
     return response
+
+
+@app.route('/api/health', methods=['GET'])
+def health():
+    return jsonify({
+        "ok": True,
+        "databaseConfigured": bool(DB_URL and DB_SECRET),
+        "sessionConfigured": bool(app.secret_key)
+    })
