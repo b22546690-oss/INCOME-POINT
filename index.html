@@ -851,6 +851,11 @@
                     if(d.user) {
                         state.data = d.user;
                         state.settings = d.settings || {};
+                        document.title = state.settings.siteName || 'Cash BD';
+                        const brandTitle = document.getElementById('sidebar-title');
+                        if (brandTitle) brandTitle.textContent = state.settings.siteName || 'Cash BD';
+                        const brandLogo = document.querySelector('.app-icon-img');
+                        if (brandLogo && state.settings.siteLogoUrl) brandLogo.src = state.settings.siteLogoUrl;
                         state.tasks = d.tasks || {};
                         state.plans = d.plans || {};
                         state.refChallenges = d.challenges || [];
@@ -970,7 +975,7 @@
                             <button onclick="app.nav('payment')" class="col-span-2 text-left rounded-2xl p-5 min-h-[100px] text-white shadow-lg bg-gradient-to-r from-emerald-600 to-teal-500"><i class="fas fa-wallet text-2xl mb-2"></i><span class="block font-bold">Deposit Funds</span><span class="text-xs text-white/80">Add funds before purchasing a plan</span></button>
                         </div>
                     </section>`;
-                return `<div class="max-w-5xl mx-auto fade-in">${banner}${shortcuts}<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">${card('fa-coins', inc.toFixed(2)+'৳', 'income', 'indigo')}${card('fa-wallet', bal.toFixed(2)+'৳', 'balance', 'green')}${card('fa-hand-holding-usd', wd.toFixed(2)+'৳', 'withdraw', 'purple')}${card('fa-users', refs, 'ref', 'pink')}</div>${refSec}</div>`;
+                return `<div class="max-w-5xl mx-auto fade-in">${banner}${refSec}${shortcuts}</div>`;
             },
 
             my_job: () => {
@@ -1051,7 +1056,7 @@
                 if (state.isGuest) return ui.authBlock();
                 const items = state.tasks.telegram || {};
                 if (!Object.keys(items).length) return `<div class="glass-panel p-6 text-center"><i class="fab fa-telegram-plane text-4xl text-sky-500 mb-3"></i><h3 class="font-bold text-lg">Telegram Channel Tasks</h3><p class="text-sm text-gray-500 mt-2">No Telegram tasks are available right now.</p></div>`;
-                return `<div class="space-y-4 fade-in"><h2 class="text-xl font-extrabold text-gray-800">Telegram Channel Tasks</h2>${Object.entries(items).map(([id,t]) => `<div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between gap-3"><div class="min-w-0"><p class="font-bold text-gray-800">${t.title || 'Join Telegram Channel'}</p><p class="text-xs text-gray-500 mt-1">${t.description || 'Join the channel and follow the task instructions.'}</p><p class="font-bold text-emerald-600 mt-2">৳${Number(t.reward || 0).toFixed(2)}</p></div><a href="${t.link || '#'}" target="_blank" rel="noopener noreferrer" class="shrink-0 px-4 py-2 rounded-xl bg-sky-600 text-white font-bold">Join</a></div>`).join('')}</div>`;
+                return `<div class="space-y-4 fade-in"><h2 class="text-xl font-extrabold text-gray-800">Telegram Channel Tasks</h2>${Object.entries(items).map(([id,t]) => `<div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between gap-3"><div class="min-w-0"><p class="font-bold text-gray-800">${t.title || 'Join Telegram Channel'}</p><p class="text-xs text-gray-500 mt-1">${t.description || 'Join the channel and follow the task instructions.'}</p><p class="font-bold text-emerald-600 mt-2">৳${Number(t.reward || 0).toFixed(2)}</p></div><button onclick="window.runTelegramTask('${id}', '${t.link || ''}')" class="shrink-0 px-4 py-2 rounded-xl bg-sky-600 text-white font-bold">Join & Submit</button></div>`).join('')}</div>`;
             },
 
             gmail_sell: () => {
@@ -1180,7 +1185,7 @@
                         const isPurchased = currentPlan === p.name;
                         const isPending = state.pendingPlan && !isPurchased; 
                         
-                        let btn = `<button onclick="window.initPayment('Plan Purchase', ${p.price}, '${p.name}')" class="w-full btn-primary py-3 rounded-xl font-bold shadow-lg shadow-indigo-200" data-i18n="buy_now">${window.appLang.t('buy_now')}</button>`;
+                        let btn = `<button onclick="window.buyPlan('${p.name}')" class="w-full btn-primary py-3 rounded-xl font-bold shadow-lg shadow-indigo-200" data-i18n="buy_now">${window.appLang.t('buy_now')}</button>`;
                         
                         if(isPurchased) btn = `<button disabled class="w-full btn-disabled py-3 rounded-xl font-bold" data-i18n="already_purchased">${window.appLang.t('already_purchased')}</button>`;
                         else if(isPending) btn = `<button disabled class="w-full bg-yellow-400 text-white cursor-not-allowed py-3 rounded-xl font-bold">Request Pending</button>`;
@@ -1190,7 +1195,7 @@
                             ${isPurchased ? '<div class="absolute top-0 right-0 bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">ACTIVE</div>' : '<div class="absolute top-0 right-0 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">VIP</div>'}
                             <h3 class="text-xl font-bold text-gray-800 mb-2">${p.name}</h3>
                             <p class="text-3xl font-extrabold text-indigo-600 mb-4">${p.price}<span class="text-sm font-normal text-gray-400">৳</span></p>
-                            <p class="text-sm text-gray-500 mb-4">${p.durationDays} Days Duration</p>
+                            <p class="text-sm text-gray-500 mb-1">${p.durationDays} Days Duration</p><p class="text-sm font-semibold text-emerald-600 mb-4">Daily income: ৳${Number(p.dailyIncome || 0).toFixed(2)}</p>
                             ${btn}
                         </div>`;
                     }).join('')}
@@ -1199,31 +1204,45 @@
 
             payment: () => {
                 if (state.isGuest) return ui.authBlock();
-                
-
                 const methods = [
-                    { name: 'Bkash', img: 'https://iili.io/fWimLbt.jpg' }, 
+                    { name: 'Bkash', img: 'https://iili.io/fWimLbt.jpg' },
                     { name: 'Nagad', img: 'https://iili.io/fWimtXn.jpg' }
                 ];
-
-                const minWithdraw = state.settings.minWithdraw || 100;
-                const minText = window.appLang.t('min_withdraw_txt').replace('{amount}', minWithdraw);
-                
-                return `<div class="max-w-md mx-auto space-y-4 fade-in">
-                    <div class="bg-indigo-600 rounded-2xl p-6 text-white mb-6 shadow-lg shadow-indigo-200">
-                        <p class="text-indigo-200 text-sm" data-i18n="balance">${window.appLang.t('balance')}</p>
-                        <h2 class="text-4xl font-bold">${state.data.balance.toFixed(2)}৳</h2>
-                    </div>
-                    ${methods.map(m => `
-                        <div onclick="window.openWithdrawModal('${m.name}')" class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:shadow-md transition">
-                            <div class="flex items-center space-x-4">
-                                <img src="${m.img}" class="method-icon">
-                                <span class="font-bold text-gray-700 text-lg">${window.appLang.t('method_' + m.name.toLowerCase())}</span>
-                            </div>
-                            <i class="fas fa-chevron-right text-gray-300"></i>
+                const minDeposit = state.settings.minDepositAmount || 50;
+                const minWithdraw = state.settings.minWithdrawAmount || 100;
+                const refs = state.data.referrals ? Object.keys(state.data.referrals).length : 0;
+                const bal = Number(state.data.balance || 0);
+                const wd = Number(state.data.totalWithdraw || 0);
+                const inc = bal + wd;
+                return `<div class="max-w-4xl mx-auto space-y-5 fade-in">
+                    <section class="rounded-3xl p-6 text-white shadow-xl bg-gradient-to-br from-indigo-700 to-violet-600">
+                        <p class="text-indigo-100 text-sm">Wallet Balance</p><h2 class="text-4xl font-extrabold mt-1">৳${bal.toFixed(2)}</h2>
+                        <div class="grid grid-cols-3 gap-2 mt-6">
+                            <div class="bg-white/15 rounded-xl p-3"><p class="text-[10px] text-white/70">Total Earned</p><p class="font-bold text-sm">৳${inc.toFixed(2)}</p></div>
+                            <div class="bg-white/15 rounded-xl p-3"><p class="text-[10px] text-white/70">Withdrawn</p><p class="font-bold text-sm">৳${wd.toFixed(2)}</p></div>
+                            <div class="bg-white/15 rounded-xl p-3"><p class="text-[10px] text-white/70">Referrals</p><p class="font-bold text-sm">${refs}</p></div>
                         </div>
-                    `).join('')}
-                    <div class="text-center text-xs text-gray-500 mt-4">${minText}</div>
+                    </section>
+                    <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                        <div class="flex items-center gap-3 mb-4"><div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><i class="fas fa-circle-plus text-xl"></i></div><div><h3 class="font-extrabold text-gray-800">Add Funds / Deposit</h3><p class="text-xs text-gray-500">Deposit first, then purchase an earning plan</p></div></div>
+                        <form id="deposit-form" onsubmit="window.submitDeposit(event)" class="space-y-3">
+                            <label class="block text-sm font-semibold text-gray-700">Deposit Amount (৳)</label>
+                            <input id="deposit-amount" type="number" min="${minDeposit}" max="100000" step="0.01" required class="w-full p-3 border border-gray-200 rounded-xl" placeholder="Minimum ৳${minDeposit}">
+                            <label class="block text-sm font-semibold text-gray-700">Payment Method</label>
+                            <select id="deposit-method" class="w-full p-3 border border-gray-200 rounded-xl"><option value="Bkash">bKash</option><option value="Nagad">Nagad</option></select>
+                            <div class="rounded-xl bg-gray-50 border p-4"><p class="text-xs text-gray-500">Send money to merchant number configured by Admin</p><p class="text-lg font-extrabold text-indigo-700 mt-1">bKash: ${(state.settings.paymentInfo || {}).bkash || 'Not configured'}</p><p class="text-lg font-extrabold text-orange-600">Nagad: ${(state.settings.paymentInfo || {}).nagad || 'Not configured'}</p></div>
+                            <label class="block text-sm font-semibold text-gray-700">Transaction ID</label>
+                            <input id="deposit-trx" required maxlength="100" class="w-full p-3 border border-gray-200 rounded-xl" placeholder="Enter transaction ID">
+                            <label class="block text-sm font-semibold text-gray-700">Payment Screenshot (required)</label>
+                            <input id="deposit-shot" type="file" accept="image/png,image/jpeg,image/webp" required class="w-full p-3 border border-gray-200 rounded-xl text-sm">
+                            <p class="text-xs text-gray-500">PNG, JPG or WEBP; maximum 700 KB. Admin will approve or reject your request.</p>
+                            <button type="submit" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold">Submit Deposit for Review</button>
+                        </form>
+                    </section>
+                    <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                        <h3 class="font-extrabold text-gray-800 mb-3">Withdraw Funds</h3><p class="text-xs text-gray-500 mb-3">Minimum withdrawal: ৳${minWithdraw}</p>
+                        <div class="grid sm:grid-cols-2 gap-3">${methods.map(m => `<button onclick="window.openWithdrawModal('${m.name}')" class="p-4 rounded-xl border border-gray-200 flex items-center gap-3 hover:border-indigo-400"><img src="${m.img}" class="w-10 h-10 rounded-full object-cover"><span class="font-bold">${m.name} Withdrawal</span></button>`).join('')}</div>
+                    </section>
                 </div>`;
             },
 
@@ -1366,6 +1385,47 @@
                 }
             } catch(e) { alert("Error"); }
             btn.disabled = false;
+        };
+
+        window.buyPlan = async (planName) => {
+            if (!state.userUid) return authHandler.trigger();
+            if (!confirm(`Purchase ${planName} using your wallet balance?`)) return;
+            try {
+                const response = await fetch('/api/buy_plan', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({uid: state.userUid, planName})
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) return alert(result.message || 'Plan purchase failed');
+                alert('Plan purchased successfully.');
+                await app.fetchData();
+                app.nav('premium_plan', true);
+            } catch (error) { alert('Network error. Please try again.'); }
+        };
+
+        window.submitDeposit = async (event) => {
+            event.preventDefault();
+            const file = document.getElementById('deposit-shot')?.files?.[0];
+            if (!file) return alert('Please attach your payment screenshot.');
+            if (file.size > 700 * 1024) return alert('Screenshot must be 700 KB or smaller.');
+            const amount = Number(document.getElementById('deposit-amount').value);
+            const method = document.getElementById('deposit-method').value;
+            const trxId = document.getElementById('deposit-trx').value.trim();
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const response = await fetch('/api/deposit', {
+                        method: 'POST', headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({uid: state.userUid, amount, method, trxId, screenshotData: reader.result})
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) return alert(result.message || 'Deposit submission failed');
+                    alert('Deposit submitted. It will be added to your wallet after admin approval.');
+                    document.getElementById('deposit-form').reset();
+                    app.nav('history', true);
+                } catch (error) { alert('Network error. Please try again.'); }
+            };
+            reader.readAsDataURL(file);
         };
 
         window.initPayment = (type, amount, detail) => {
@@ -1538,36 +1598,58 @@
             }
         };
 
-        window.runTask = async (tid, link, reward, btn) => {
-            const w = window.open(link, '_blank');
-            if(!w) return alert(window.appLang.t('allow_popup'));
-            
-            btn.disabled = true;
-            btn.innerHTML = '<div class="spinner border-indigo-600"></div>';
-            
-            setTimeout(async () => {
-                try {
-                    const res = await fetch('/api/complete_task', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ uid: state.userUid, taskId: tid, reward: reward })
-                    });
-                    const d = await res.json();
-                    if(d.success) {
-                        alert(`${window.appLang.t('task_complete')} +${reward}৳`);
-                        window.location.reload();
-                    } else {
-                        alert(d.message);
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-play"></i>';
+        window.openTaskScreenshotPicker = (taskId, category, button) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/png,image/jpeg,image/webp';
+            input.onchange = () => {
+                const file = input.files && input.files[0];
+                if (!file) { if (button) button.disabled = false; return; }
+                if (file.size > 700 * 1024) { alert('Screenshot must be 700 KB or smaller.'); if (button) button.disabled = false; return; }
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    try {
+                        const response = await fetch('/api/submit_task', {
+                            method: 'POST', headers: {'Content-Type':'application/json'},
+                            body: JSON.stringify({uid: state.userUid, taskId, category, screenshotData: reader.result})
+                        });
+                        const result = await response.json();
+                        if (!response.ok || !result.success) {
+                            alert(result.message || 'Task submission failed.');
+                            if (button) button.disabled = false;
+                            return;
+                        }
+                        alert('Screenshot submitted. Reward will be added after admin approval.');
+                        app.nav('history', true);
+                    } catch (error) {
+                        alert('Network error while submitting screenshot.');
+                        if (button) button.disabled = false;
                     }
-                } catch(e) { 
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-play"></i>';
-                }
-            }, 5000);
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
         };
-        
+
+        window.runTask = (taskId, link, reward, button) => {
+            const opened = window.open(link, '_blank', 'noopener,noreferrer');
+            if (!opened) return alert(window.appLang.t('allow_popup'));
+            if (button) { button.disabled = true; button.innerHTML = '<i class="fas fa-camera"></i>'; }
+            setTimeout(() => {
+                alert('Complete the task, then choose a screenshot of your completed work.');
+                window.openTaskScreenshotPicker(taskId, 'basic', button);
+            }, 4000);
+        };
+
+        window.runTelegramTask = (taskId, link) => {
+            const opened = window.open(link, '_blank', 'noopener,noreferrer');
+            if (!opened) return alert(window.appLang.t('allow_popup'));
+            setTimeout(() => {
+                alert('Join the Telegram channel, then upload a screenshot as proof.');
+                window.openTaskScreenshotPicker(taskId, 'telegram', null);
+            }, 4000);
+        };
+
         window.openProfileModal = () => {
             document.getElementById('modal-edit-fullname').value = state.data.fullname || '';
             document.getElementById('modal-edit-username').value = state.data.username || '';
