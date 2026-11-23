@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Loading...</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+        :root { --primary: #6366f1; --secondary: #4f46e5; }
+        body { font-family: 'Poppins', sans-serif; background-color: #f3f4f6; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+
+        /* --- UI Elements --- */
+        .sidebar-gradient { background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%); }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.5); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-radius: 16px; }
+        .btn-primary { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; transition: all 0.2s; }
+        .btn-primary:active { transform: scale(0.98); }
+        
+        /* --- Navigation Spacing --- */
+        .nav-item { display: flex; align-items: center; padding: 14px 20px; margin-bottom: 8px; border-radius: 12px; color: #a5b4fc; transition: 0.3s; font-weight: 500; }
+        .nav-item.active { background: rgba(255,255,255,0.1); color: white; border-left: 4px solid #818cf8; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
+        
+        #bottom-nav { height: 75px; padding-bottom: env(safe-area-inset-bottom); display: flex; justify-content: space-between; align-items: center; padding-left: 1rem; padding-right: 1rem; }
+        .bottom-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; transition: 0.3s; }
+        .bottom-nav-item.active { color: #4f46e5; transform: translateY(-2px); }
+        .home-btn { width: 56px; height: 56px; background: #4f46e5; border-radius: 50%; color: white; display: flex; justify-content: center; align-items: center; transform: translateY(-25px); box-shadow: 0 8px 20px rgba(79, 70, 229, 0.4); border: 4px solid #f3f4f6; }
+        .home-btn.active { color: white; background: #4338ca; }
+
+        /* --- Dashboard Cards --- */
+        .dash-card { position: relative; overflow: hidden; height: 140px; border-radius: 20px; transition: transform 0.2s; display: flex; flex-direction: column; justify-content: center; padding-left: 24px; }
+        .dash-card:hover { transform: translateY(-3px); }
+        .card-icon-bg { position: absolute; right: -10px; bottom: -10px; font-size: 6rem; opacity: 0.1; transform: rotate(-15deg); }
+
+        /* --- Skeleton Loader --- */
+        .skeleton { background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* --- Modals & Auth --- */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 50; display: none; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s; }
+        .modal-overlay.open { display: flex; opacity: 1; }
+        .modal-box { background: white; width: 90%; max-width: 420px; border-radius: 24px; padding: 24px; transform: scale(0.95); transition: transform 0.3s; max-height: 90vh; overflow-y: auto; }
+        .modal-overlay.open .modal-box { transform: scale(1); }
+        
+        .step-dots { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; }
+        .step-dot { width: 8px; height: 8px; border-radius: 50%; background: #e2e8f0; transition: 0.3s; }
+        .step-dot.active { background: #4f46e5; width: 20px; border-radius: 4px; }
+
+        /* --- Utilities --- */
+        .hidden { display: none !important; }
+        .spinner { width: 20px; height: 20px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- App Container -->
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed inset-y-0 left-0 w-72 sidebar-gradient transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-40 flex flex-col shadow-2xl">
+            <div class="h-24 flex items-center px-8 border-b border-indigo-800/50">
+                <div id="sidebar-logo" class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white mr-3 overflow-hidden"><i class="fas fa-gem"></i></div>
+                <h1 id="sidebar-title" class="text-white font-bold text-xl tracking-wide">EarningApp</h1>
+            </div>
+
+            <!-- Sidebar User Info -->
+            <div class="p-6">
+                <div class="flex items-center space-x-4 bg-white/5 p-4 rounded-2xl border border-white/10 cursor-pointer hover:bg-white/10 transition" onclick="app.nav('profile')">
+                    <img id="sidebar-avatar" src="https://placehold.co/100x100/4f46e5/ffffff?text=G" class="w-12 h-12 rounded-full border-2 border-indigo-400 object-cover">
+                    <div class="overflow-hidden">
+                        <p id="sidebar-name" class="text-white font-semibold truncate">Guest</p>
+                        <p id="sidebar-status" class="text-xs text-gray-400">Not Logged In</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nav Links -->
+            <nav class="flex-1 px-4 overflow-y-auto space-y-2 mt-2">
+                <a href="#" class="nav-item active" onclick="app.nav('dashboard')" data-page="dashboard"><i class="fas fa-home w-8"></i> <span data-i18n="dashboard">Dashboard</span></a>
+                <a href="#" class="nav-item" onclick="app.nav('my_job')" data-page="my_job"><i class="fas fa-briefcase w-8"></i> <span data-i18n="task">Task</span></a>
+                <a href="#" class="nav-item" onclick="app.nav('premium_plan')" data-page="premium_plan"><i class="fas fa-crown w-8 text-yellow-300"></i> <span data-i18n="plan">Plan</span></a>
+                <a href="#" class="nav-item" onclick="app.nav('payment')" data-page="payment"><i class="fas fa-wallet w-8"></i> <span data-i18n="withdraw">Withdraw</span></a>
+                <a href="#" class="nav-item" onclick="app.nav('history')" data-page="history"><i class="fas fa-history w-8"></i> <span data-i18n="history">History</span></a>
+                <a href="#" class="nav-item" onclick="app.nav('profile')" data-page="profile"><i class="fas fa-user-circle w-8"></i> <span data-i18n="profile">Profile</span></a>
+                <div class="mt-5 mb-2 px-3 text-[10px] font-bold tracking-widest text-indigo-300 uppercase">Administration</div>
+                <a href="#" class="nav-item" onclick="app.nav('deposit_review')" data-page="deposit_review"><i class="fas fa-receipt w-8"></i> <span>Deposit Review</span></a>
+                <a href="#" class="nav-item" onclick="app.nav('task_review')" data-page="task_review"><i class="fas fa-clipboard-check w-8"></i> <span>Task Review</span></a>
+                <a href="#" class="nav-item" onclick="app.nav('task_manager')" data-page="task_manager"><i class="fas fa-list-check w-8"></i> <span>Manage Tasks</span></a>
+                <a href="#" class="nav-item" onclick="app.nav('plan_manager')" data-page="plan_manager"><i class="fas fa-layer-group w-8"></i> <span>Manage Plans</span></a>
+                <a href="#" class="nav-item" onclick="app.nav('site_settings')" data-page="site_settings"><i class="fas fa-sliders-h w-8"></i> <span>Site Settings</span></a>
+                
+                <div class="mt-8 border-t border-indigo-800/50 pt-4">
+                    <a href="#" id="admin-link" class="nav-item hidden text-yellow-300" onclick="app.nav('admin_panel')"><i class="fas fa-shield-alt w-8"></i> Admin</a>
+                    <a href="#" id="auth-btn" class="nav-item text-red-300" onclick="authHandler.trigger()"><i class="fas fa-sign-in-alt w-8"></i> <span data-i18n="login">Login</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Overlay -->
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden transition-opacity" onclick="ui.toggleSidebar()"></div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col md:ml-72 h-full relative bg-[#f3f4f6]">
+            <!-- Mobile Header -->
+            <header class="h-16 bg-white flex items-center justify-between px-5 md:hidden z-20 shadow-sm sticky top-0">
+                <button onclick="ui.toggleSidebar()" class="text-gray-600 text-xl"><i class="fas fa-bars"></i></button>
+                <h2 id="header-title" class="font-bold text-gray-800 text-lg">Dashboard</h2>
+                <div class="w-9 h-9 rounded-full overflow-hidden border border-gray-200" onclick="app.nav('profile')">
+                    <img id="header-avatar" src="https://placehold.co/100x100/4f46e5/ffffff?text=G" class="w-full h-full object-cover">
+                </div>
+            </header>
+
+            <!-- Dynamic Page Content -->
+            <main id="content-area" class="flex-1 overflow-y-auto p-5 pb-24 md:p-8 md:pb-8">
+                <!-- Content injected via JS -->
+            </main>
+        </div>
+
+        <!-- Bottom Nav -->
+        <nav id="bottom-nav" class="fixed bottom-0 w-full bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] md:hidden z-30">
+            <button class="bottom-nav-item" onclick="app.nav('my_job')" data-page="my_job"><i class="fas fa-briefcase text-xl mb-1"></i><span class="text-[10px]" data-i18n="task">Task</span></button>
+            <button class="bottom-nav-item" onclick="app.nav('premium_plan')" data-page="premium_plan"><i class="fas fa-crown text-xl mb-1 text-yellow-500"></i><span class="text-[10px]" data-i18n="plan">Plan</span></button>
+            <button class="home-btn" onclick="app.nav('dashboard')" data-page="dashboard"><i class="fas fa-home text-2xl"></i></button>
+            <button class="bottom-nav-item" onclick="app.nav('payment')" data-page="payment"><i class="fas fa-wallet text-xl mb-1"></i><span class="text-[10px]" data-i18n="withdraw">Withdraw</span></button>
+            <button class="bottom-nav-item" onclick="app.nav('profile')" data-page="profile"><i class="fas fa-user text-xl mb-1"></i><span class="text-[10px]" data-i18n="profile">Profile</span></button>
+        </nav>
+    </div>
+
+    <!-- AUTH MODAL -->
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal-box relative">
+            <button onclick="ui.closeModal('auth-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+            
+            <div class="text-center mb-6">
+                <img src="https://placehold.co/100x100/4f46e5/ffffff?text=U" class="w-20 h-20 rounded-full mx-auto shadow-lg border-4 border-indigo-50 mb-4">
+                <h2 id="auth-title" class="text-2xl font-bold text-gray-800">Login</h2>
+                <div class="flex justify-center space-x-3 mt-2 text-sm text-gray-500">
+                    <span onclick="lang.set('en')" class="cursor-pointer hover:text-indigo-600 font-medium">English</span>
+                    <span>|</span>
+                    <span onclick="lang.set('bn')" class="cursor-pointer hover:text-indigo-600 font-medium">বাংলা</span>
+                </div>
+            </div>
+
+            <!-- Alert -->
+            <div id="auth-alert" class="hidden p-3 rounded-lg text-sm mb-4 text-center"></div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="space-y-4">
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center">
+                    <i class="fas fa-user text-gray-400 mr-3 ml-1"></i>
+                    <input type="text" id="login-input" placeholder="Username or Email" class="bg-transparent w-full focus:outline-none text-gray-700 text-sm" required>
+                </div>
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center">
+                    <i class="fas fa-lock text-gray-400 mr-3 ml-1"></i>
+                    <input type="password" id="login-pass" placeholder="Password" class="bg-transparent w-full focus:outline-none text-gray-700 text-sm" required>
+                </div>
+                <button type="submit" class="btn-primary w-full py-3.5 rounded-xl font-bold shadow-lg flex justify-center items-center">
+                    <span class="btn-text" data-i18n="login">Login</span>
+                    <div class="spinner hidden ml-2"></div>
+                </button>
+            </form>
+
+            <!-- Register Form (3 Steps) -->
+            <form id="reg-form" class="hidden space-y-4">
+                <!-- Step Indicators -->
+                <div class="step-dots">
+                    <div class="step-dot active" id="dot-1"></div>
+                    <div class="step-dot" id="dot-2"></div>
+                    <div class="step-dot" id="dot-3"></div>
+                </div>
+
+                <!-- Step 1 -->
+                <div id="step-1">
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center">
+                            <i class="fas fa-id-card text-gray-400 mr-3 ml-1"></i>
+                            <input type="text" id="reg-name" placeholder="Full Name" class="bg-transparent w-full focus:outline-none text-gray-700 text-sm">
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center">
+                            <i class="fas fa-user-tag text-gray-400 mr-3 ml-1"></i>
+                            <input type="text" id="reg-username" placeholder="Username (Unique)" class="bg-transparent w-full focus:outline-none text-gray-700 text-sm">
+                        </div>
+                        <button type="button" onclick="authHandler.nextStep(2)" class="btn-primary w-full py-3.5 rounded-xl font-bold">Next</button>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div id="step-2" class="hidden">
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center">
+                            <i class="fas fa-envelope text-gray-400 mr-3 ml-1"></i>
+                            <input type="email" id="reg-email" placeholder="Email Address" class="bg-transparent w-full focus:outline-none text-gray-700 text-sm">
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center">
+                            <i class="fas fa-gift text-gray-400 mr-3 ml-1"></i>
+                            <input type="text" id="reg-ref" placeholder="Referral Code (Optional)" class="bg-transparent w-full focus:outline-none text-gray-700 text-sm">
+                        </div>
+                        <div class="flex space-x-2">
+                            <button type="button" onclick="authHandler.nextStep(1)" class="w-1/3 py-3.5 bg-gray-200 text-gray-700 rounded-xl font-bold">Back</button>
+                            <button type="button" onclick="authHandler.nextStep(3)" class="w-2/3 btn-primary py-3.5 rounded-xl font-bold">Next</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div id="step-3" class="hidden">
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center">
+                            <i class="fas fa-lock text-gray-400 mr-3 ml-1"></i>
+                            <input type="password" id="reg-pass" placeholder="Password (Min 6 chars)" class="bg-transparent w-full focus:outline-none text-gray-700 text-sm">
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 flex items-center">
+                            <i class="fas fa-check-circle text-gray-400 mr-3 ml-1"></i>
+                            <input type="password" id="reg-confirm" placeholder="Confirm Password" class="bg-transparent w-full focus:outline-none text-gray-700 text-sm">
+                        </div>
+                        <div class="flex items-center text-xs text-gray-500">
+                            <input type="checkbox" checked disabled class="mr-2 text-indigo-600">
+                            I agree to the Terms & Conditions
+                        </div>
+                        <div class="flex space-x-2">
+                            <button type="button" onclick="authHandler.nextStep(2)" class="w-1/3 py-3.5 bg-gray-200 text-gray-700 rounded-xl font-bold">Back</button>
+                            <button type="submit" class="w-2/3 btn-primary py-3.5 rounded-xl font-bold flex justify-center items-center">
+                                <span class="btn-text">Create Account</span>
+                                <div class="spinner hidden ml-2"></div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <div class="mt-6 text-center text-sm">
+                <p id="switch-txt" class="text-gray-500">Don't have an account? <button onclick="authHandler.toggleMode()" class="text-indigo-600 font-bold hover:underline">Register</button></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- GENERAL MODAL (Payment, Alerts) -->
+    <div id="gen-modal" class="modal-overlay">
+        <div class="modal-box relative">
+            <button onclick="ui.closeModal('gen-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+            <div id="gen-modal-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CONFIG & STATE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDPPctCIN1k9RIoJrjF1_kM2nnxx83yIcc",
+            authDomain: "income-point-7ddf3.firebaseapp.com",
+            databaseURL: "https://income-point-7ddf3-default-rtdb.firebaseio.com",
+            projectId: "income-point-7ddf3",
+            storageBucket: "income-point-7ddf3.firebasestorage.app",
+            messagingSenderId: "408193738505",
+            appId: "1:408193738505:web:0fe196400ba6f647e455d8",
+            measurementId: "G-995GQ99Z5F"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        const state = {
+            user: null,
+            isGuest: true,
+            data: {}, // User Data
+            settings: {}, // Admin Settings
+            tasks: {},
+            plans: {},
+            currentLang: localStorage.getItem('lang') || 'en',
+            isAdmin: false
+        };
+
+        const dict = {
+            en: { dashboard: "Dashboard", task: "Task", plan: "Plan", withdraw: "Withdraw", history: "History", profile: "Profile", login: "Login", logout: "Logout", welcome: "Welcome", activate: "Activate Account", verified: "Verified", inactive: "Inactive", balance: "Balance", income: "Total Income", ref: "Referrals", share: "Share & Earn", guest: "Guest", no_access: "Login Required", no_access_desc: "Please login to access this feature.", act_desc: "Activate to unlock Withdraw & Plans", act_msg: "Account inactive", edit: "Edit", save: "Save", cancel: "Cancel", trx_id: "Transaction ID", submit: "Submit" },
+            bn: { dashboard: "ড্যাশবোর্ড", task: "টাস্ক", plan: "প্ল্যান", withdraw: "উত্তোলন", history: "হিস্ট্রি", profile: "প্রোফাইল", login: "লগইন", logout: "লগ আউট", welcome: "স্বাগতম", activate: "অ্যাকাউন্ট এক্টিভ করুন", verified: "ভেরিফাইড", inactive: "ইনএ্যাক্টিভ", balance: "ব্যালেন্স", income: "মোট আয়", ref: "রেফারেল", share: "শেয়ার করুন", guest: "অতিথি", no_access: "লগইন প্রয়োজন", no_access_desc: "এই ফিচারটি পেতে লগইন করুন।", act_desc: "টাকা তুলতে অ্যাকাউন্ট এক্টিভ করুন", act_msg: "অ্যাকাউন্ট ইনএ্যাক্টিভ", edit: "এডিট", save: "সেভ", cancel: "বাতিল", trx_id: "ট্রানজেকশন আইডি", submit: "জমা দিন" }
+        };
+
+        // --- 2. CORE FUNCTIONS ---
+        const lang = {
+            t: (k) => dict[state.currentLang][k] || k,
+            set: (l) => {
+                state.currentLang = l;
+                localStorage.setItem('lang', l);
+                ui.updateText();
+                app.nav(app.currentPage, true);
+            }
+        };
+
+        const ui = {
+            toggleSidebar: () => {
+                const sb = document.getElementById('sidebar');
+                const ov = document.getElementById('sidebar-overlay');
+                const isClosed = sb.classList.contains('-translate-x-full');
+                sb.classList.toggle('-translate-x-full', !isClosed);
+                ov.classList.toggle('hidden', !isClosed);
+            },
+            openModal: (id) => document.getElementById(id).classList.add('open'),
+            closeModal: (id) => document.getElementById(id).classList.remove('open'),
+            updateText: () => {
+                document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = lang.t(el.dataset.i18n));
+            },
+            skeleton: (h = "h-24") => `<div class="skeleton w-full ${h} mb-4"></div>`,
+            showError: (elId, msg) => {
+                const el = document.getElementById(elId);
+                el.textContent = msg;
+                el.className = `p-3 rounded-lg text-sm mb-4 text-center block ${msg.includes('Success') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+                el.classList.remove('hidden');
+                setTimeout(() => el.classList.add('hidden'), 4000);
+            }
+        };
+
+        // --- 3. AUTH LOGIC (Complex) ---
+        const authHandler = {
+            mode: 'login', // login | register
+            regStep: 1,
+
+            trigger: () => {
+                ui.openModal('auth-modal');
+                authHandler.resetForm();
+            },
+
+            toggleMode: () => {
+                authHandler.mode = authHandler.mode === 'login' ? 'register' : 'login';
+                const isLogin = authHandler.mode === 'login';
+                
+                document.getElementById('auth-title').textContent = isLogin ? lang.t('login') : "Create Account";
+                document.getElementById('login-form').classList.toggle('hidden', !isLogin);
+                document.getElementById('reg-form').classList.toggle('hidden', isLogin);
+                
+                const switchHtml = isLogin 
+                    ? `Don't have an account? <button onclick="authHandler.toggleMode()" class="text-indigo-600 font-bold hover:underline">Register</button>`
+                    : `Already have an account? <button onclick="authHandler.toggleMode()" class="text-indigo-600 font-bold hover:underline">Login</button>`;
+                document.getElementById('switch-txt').innerHTML = switchHtml;
+            },
+
+            resetForm: () => {
+                authHandler.mode = 'login';
+                authHandler.regStep = 1;
+                document.getElementById('login-form').reset();
+                document.getElementById('reg-form').reset();
+                authHandler.toggleMode(); // Resets UI to login
+                authHandler.toggleMode(); // Double toggle to ensure correct state
+                authHandler.nextStep(1);
+            },
+
+            nextStep: (step) => {
+                authHandler.regStep = step;
+                [1, 2, 3].forEach(s => {
+                    document.getElementById(`step-${s}`).classList.toggle('hidden', s !== step);
+                    const dot = document.getElementById(`dot-${s}`);
+                    dot.className = `step-dot ${s === step ? 'active' : ''}`;
+                });
+            },
+
+            login: async (e) => {
+                e.preventDefault();
+                const input = document.getElementById('login-input').value.trim();
+                const pass = document.getElementById('login-pass').value;
+                const btn = e.target.querySelector('button');
+                
+                ui.loading(btn, true);
+
+                try {
+                    let email = input;
+                    // Check if input is username (no @)
+                    if (!input.includes('@')) {
+                        const snap = await db.ref('users').orderByChild('username').equalTo(input).once('value');
+                        if (!snap.exists()) throw "User not found";
+                        const uid = Object.keys(snap.val())[0];
+                        email = snap.val()[uid].email;
+                    }
+                    await auth.signInWithEmailAndPassword(email, pass);
+                    ui.closeModal('auth-modal');
+                } catch (err) {
+                    ui.showError('auth-alert', "Invalid Credentials");
+                } finally {
+                    ui.loading(btn, false);
+                }
+            },
+
+            register: async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('reg-name').value;
+                const user = document.getElementById('reg-username').value;
+                const email = document.getElementById('reg-email').value;
+                const pass = document.getElementById('reg-pass').value;
+                const conf = document.getElementById('reg-confirm').value;
+                const ref = document.getElementById('reg-ref').value;
+                const btn = e.target.querySelector('button');
+
+                if (pass !== conf) return ui.showError('auth-alert', "Passwords do not match");
+                if (!name || !user || !email) return ui.showError('auth-alert', "Fill all fields");
+
+                ui.loading(btn, true);
+
+                try {
+                    // Check Username uniqueness
+                    const uSnap = await db.ref('users').orderByChild('username').equalTo(user).once('value');
+                    if (uSnap.exists()) throw "Username taken";
+
+                    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+                    
+                    // Handle Referral
+                    let referredBy = null;
+                    if (ref) {
+                        const rSnap = await db.ref('referralCodes').orderByValue().equalTo(ref).once('value');
+                        if (rSnap.exists()) referredBy = Object.keys(rSnap.val())[0];
+                    }
+
+                    const newRefId = `U${Math.floor(100000 + Math.random() * 900000)}`;
+                    const userData = {
+                        username: user,
+                        fullname: name,
+                        email,
+                        refId: newRefId,
+                        referredBy,
+                        isAccountActive: false,
+                        balance: 0,
+                        totalWithdraw: 0,
+                        joinDate: new Date().toISOString()
+                    };
+
+                    await db.ref(`users/${cred.user.uid}`).set(userData);
+                    await db.ref(`referralCodes/${cred.user.uid}`).set(newRefId);
+                    if (referredBy) await db.ref(`users/${referredBy}/referrals/${cred.user.uid}`).set(true);
+
+                    ui.closeModal('auth-modal');
+                } catch (err) {
+                    ui.showError('auth-alert', err.message || err);
+                } finally {
+                    ui.loading(btn, false);
+                }
+            }
+        };
+        
+        // Helper for btn loading
+        ui.loading = (btn, isLoading) => {
+            btn.querySelector('.btn-text').classList.toggle('hidden', isLoading);
+            btn.querySelector('.spinner').classList.toggle('hidden', !isLoading);
+            btn.disabled = isLoading;
+        };
+
+        // --- 4. APP LOGIC & ROUTING ---
+        const app = {
+            currentPage: 'dashboard',
+            
+            init: async () => {
+                // Listeners
+                document.getElementById('login-form').addEventListener('submit', authHandler.login);
+                document.getElementById('reg-form').addEventListener('submit', authHandler.register);
+                
+                // URL Ref Check
+                const urlRef = new URLSearchParams(window.location.search).get('ref');
+                if (urlRef) {
+                    authHandler.trigger();
+                    authHandler.toggleMode(); // Switch to register
+                    document.getElementById('reg-ref').value = urlRef;
+                }
+
+                document.getElementById('sidebar-title').textContent = 'Cash BD';
+                document.title = 'Cash BD';
+
+                // Fail-closed admin gate: authenticated users must have an explicit
+                // admin/users/{uid} allow-list entry before any admin UI is initialized.
+                auth.onAuthStateChanged(async (u) => {
+                    if (!u) {
+                        state.user = null;
+                        state.isGuest = true;
+                        state.isAdmin = false;
+                        state.data = {};
+                        app.updateUI();
+                        app.nav('dashboard', true);
+                        return;
+                    }
+                    try {
+                        const adminSnap = await db.ref(`admin/users/${u.uid}`).once('value');
+                        const adminValue = adminSnap.val();
+                        const authorized = adminSnap.exists() && (adminValue === true || adminValue === 'true' || (adminValue && adminValue.role === 'admin' && adminValue.active !== false));
+                        if (!authorized) {
+                            state.user = null;
+                            state.isGuest = true;
+                            state.isAdmin = false;
+                            await auth.signOut();
+                            const root = document.getElementById('app') || document.body;
+                            root.innerHTML = `<main class="min-h-screen flex items-center justify-center p-6"><section class="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center"><div class="text-red-500 text-4xl mb-4"><i class="fas fa-shield-alt"></i></div><h1 class="text-xl font-bold text-gray-900">Admin access denied</h1><p class="text-sm text-gray-500 mt-2">This account is not authorized to access the administration panel.</p></section></main>`;
+                            return;
+                        }
+                        state.user = u;
+                        state.isGuest = false;
+                        state.isAdmin = true;
+                        // Load protected admin data only after the allow-list check succeeds.
+                        const [taskS, planS, setS] = await Promise.all([
+                            db.ref('tasks').once('value'),
+                            db.ref('plans').once('value'),
+                            db.ref('admin').once('value')
+                        ]);
+                        state.tasks = taskS.val() || {};
+                        state.plans = planS.val() || {};
+                        state.settings = setS.val() || { siteName: "Cash BD" };
+                        document.getElementById('sidebar-title').textContent = state.settings.siteName || 'Cash BD';
+                        document.title = state.settings.siteName || 'Cash BD';
+                        const logoBox = document.getElementById('sidebar-logo');
+                        if (logoBox && state.settings.siteLogoUrl) logoBox.innerHTML = `<img src="${state.settings.siteLogoUrl}" alt="Site logo" class="w-full h-full object-contain">`;
+                        db.ref(`users/${u.uid}`).on('value', snap => {
+                            state.data = snap.val() || {};
+                            app.updateUI();
+                            app.nav(app.currentPage, true);
+                        });
+                        const adminLink = document.getElementById('admin-link');
+                        if (adminLink) adminLink.classList.remove('hidden');
+                    } catch (error) {
+                        console.error('Admin authorization check failed', error);
+                        await auth.signOut();
+                        document.body.innerHTML = '<main class="min-h-screen flex items-center justify-center p-6"><p class="font-semibold text-red-600">Admin authorization could not be verified. Access is blocked.</p></main>';
+                    }
+                });
+            },
+
+            updateUI: () => {
+                const name = state.isGuest ? lang.t('guest') : state.data.username;
+                const status = state.isGuest ? "Login Required" : (state.data.isAccountActive ? lang.t('verified') : lang.t('inactive'));
+                const img = state.isGuest ? "https://placehold.co/100x100/4f46e5/ffffff?text=G" : (state.data.profilePictureUrl || `https://placehold.co/100x100/4f46e5/ffffff?text=${name.charAt(0).toUpperCase()}`);
+
+                // Update Side & Header
+                ['sidebar', 'header'].forEach(p => {
+                    if (document.getElementById(`${p}-name`)) document.getElementById(`${p}-name`).textContent = name;
+                    if (document.getElementById(`${p}-status`)) {
+                        const el = document.getElementById(`${p}-status`);
+                        el.textContent = status;
+                        el.className = `text-xs font-bold ${state.isGuest ? 'text-gray-400' : (state.data.isAccountActive ? 'text-green-400' : 'text-red-400')}`;
+                    }
+                    document.getElementById(`${p}-avatar`).src = img;
+                });
+
+                // Update Auth Btn
+                const authBtn = document.getElementById('auth-btn');
+                authBtn.innerHTML = state.isGuest 
+                    ? `<i class="fas fa-sign-in-alt w-8"></i> ${lang.t('login')}`
+                    : `<i class="fas fa-sign-out-alt w-8"></i> ${lang.t('logout')}`;
+                authBtn.onclick = state.isGuest ? authHandler.trigger : () => auth.signOut();
+            },
+
+            nav: (page, force = false) => {
+                if (page === app.currentPage && !force) return;
+                app.currentPage = page;
+                
+                // Update Nav States
+                document.querySelectorAll('.nav-item, .bottom-nav-item, .home-btn').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll(`[data-page="${page}"]`).forEach(el => el.classList.add('active'));
+
+                // Render Content with Skeleton
+                const content = document.getElementById('content-area');
+                content.innerHTML = `<div class="max-w-4xl mx-auto">${ui.skeleton('h-32')}${ui.skeleton()}${ui.skeleton()}</div>`;
+                
+                // Update Header Title
+                document.getElementById('header-title').textContent = lang.t(page);
+
+                setTimeout(() => {
+                    content.innerHTML = pages[page] ? pages[page]() : pages.dashboard();
+                    ui.updateText();
+                    if (page === 'deposit_review') window.loadDepositReview();
+                    if (page === 'task_review') window.loadTaskReview();
+                    if (page === 'task_manager') window.loadTaskList();
+                    if (page === 'plan_manager') window.loadPlanList();
+                    if(document.body.clientWidth < 768) {
+                        document.getElementById('sidebar').classList.add('-translate-x-full');
+                        document.getElementById('sidebar-overlay').classList.add('hidden');
+                    }
+                }, 100); // Slight delay for smooth feel
+            }
+        };
+
+        // --- 5. PAGE RENDERERS ---
+        const pages = {
+            dashboard: () => {
+                const bal = state.data.balance || 0;
+                const wd = state.data.totalWithdraw || 0;
+                const inc = bal + wd;
+                const refs = state.data.referrals ? Object.keys(state.data.referrals).length : 0;
+                const fee = state.settings.activationFee || 100;
+
+                // Status Banner
+                let banner = '';
+                if (state.isGuest) {
+                    banner = `<div class="glass-panel p-6 mb-6 border-l-4 border-indigo-500 flex justify-between items-center"><div><h2 class="text-lg font-bold text-gray-800">${lang.t('welcome')}</h2><p class="text-sm text-gray-500">${lang.t('no_access_desc')}</p></div><button onclick="authHandler.trigger()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow">${lang.t('login')}</button></div>`;
+                } else if (!state.data.isAccountActive) {
+                    banner = `<div class="glass-panel p-6 mb-6 border-l-4 border-red-500 relative overflow-hidden"><div class="relative z-10"><h2 class="text-lg font-bold text-red-600"><i class="fas fa-lock mr-2"></i> ${lang.t('act_msg')}</h2><p class="text-sm text-gray-600 mb-3">${lang.t('act_desc')}</p><button onclick="window.initPayment('Activation', ${fee})" class="px-5 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700">${lang.t('activate')} (${fee}৳)</button></div><i class="fas fa-shield-alt absolute right-[-10px] bottom-[-20px] text-9xl text-red-500/10 z-0"></i></div>`;
+                } else {
+                    banner = `<div class="glass-panel p-4 mb-6 border-l-4 border-green-500"><h2 class="font-bold text-green-700 flex items-center"><i class="fas fa-check-circle mr-2"></i> ${lang.t('verified')}</h2></div>`;
+                }
+
+                // Card Component
+                const card = (i, v, l, c) => `
+                    <div class="dash-card bg-white shadow-sm border border-gray-100">
+                        <div class="z-10">
+                            <h3 class="text-3xl font-bold text-gray-800">${state.isGuest ? '-' : v}</h3>
+                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-1">${lang.t(l)}</p>
+                        </div>
+                        <i class="fas ${i} card-icon-bg text-${c}-500"></i>
+                    </div>`;
+
+                // Ref Section (Restricted)
+                const refSec = (!state.isGuest && state.data.isAccountActive) ? `
+                    <div class="glass-panel p-6 bg-white mt-6">
+                        <h3 class="font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-share-alt mr-2 text-indigo-500"></i> ${lang.t('share')}</h3>
+                        <div class="flex items-center space-x-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                            <code id="ref-code" class="flex-1 text-indigo-600 font-mono text-sm truncate">${window.location.origin}?ref=${state.data.refId}</code>
+                            <button onclick="navigator.clipboard.writeText(document.getElementById('ref-code').innerText); alert('Copied!')" class="p-2 bg-white shadow rounded-lg hover:bg-gray-50"><i class="fas fa-copy text-gray-600"></i></button>
+                        </div>
+                    </div>` : '';
+
+                return `
+                    <div class="max-w-5xl mx-auto fade-in">
+                        ${banner}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                            ${card('fa-coins', inc.toFixed(2)+'৳', 'income', 'indigo')}
+                            ${card('fa-wallet', bal.toFixed(2)+'৳', 'balance', 'green')}
+                            ${card('fa-hand-holding-usd', wd.toFixed(2)+'৳', 'withdraw', 'purple')}
+                            ${card('fa-users', refs, 'ref', 'pink')}
+                        </div>
+                        ${refSec}
+                    </div>`;
+            },
+
+            my_job: () => {
+                if (state.isGuest) return ui.authBlock();
+                if (!state.data.isAccountActive) return ui.inactiveBlock();
+                
+                const tasks = state.tasks.basic || {}; // Simplified
+                if(Object.keys(tasks).length === 0) return `<div class="text-center text-gray-400 mt-10">No Tasks Available</div>`;
+
+                return `<div class="max-w-2xl mx-auto space-y-4 fade-in">
+                    ${Object.entries(tasks).map(([id, t]) => `
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center transition hover:shadow-md">
+                            <div><p class="font-bold text-gray-800 text-lg">${t.name}</p><p class="text-green-600 font-bold">${t.reward}৳</p></div>
+                            <button onclick="window.runTask('${id}', '${t.link}', ${t.reward}, this)" class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition flex items-center justify-center text-xl shadow"><i class="fas fa-play"></i></button>
+                        </div>
+                    `).join('')}
+                </div>`;
+            },
+
+            premium_plan: () => {
+                if (state.isGuest) return ui.authBlock();
+                if (!state.data.isAccountActive) return `<div class="text-center mt-10 p-6 bg-white rounded-xl shadow"><i class="fas fa-lock text-4xl text-gray-300 mb-3"></i><p>Activate account to view plans</p></div>`;
+
+                return `<div class="max-w-4xl mx-auto grid md:grid-cols-2 gap-6 fade-in">
+                    ${Object.values(state.plans).map(p => `
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-indigo-50 relative overflow-hidden hover:-translate-y-1 transition duration-300">
+                            <div class="absolute top-0 right-0 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">VIP</div>
+                            <h3 class="text-xl font-bold text-gray-800 mb-2">${p.name}</h3>
+                            <p class="text-3xl font-extrabold text-indigo-600 mb-4">${p.price}<span class="text-sm font-normal text-gray-400">৳</span></p>
+                            <button onclick="window.initPayment('Plan Purchase', ${p.price}, '${p.name}')" class="w-full btn-primary py-3 rounded-xl font-bold shadow-lg shadow-indigo-200">Buy Now</button>
+                        </div>
+                    `).join('')}
+                </div>`;
+            },
+
+            payment: () => {
+                if (state.isGuest) return ui.authBlock();
+                
+                // If inactive, clicking logic is handled inside openWithdrawModal to show Prompt
+                const methods = [
+                    { name: 'Bkash', color: 'pink', icon: 'B' },
+                    { name: 'Nagad', color: 'orange', icon: 'N' }
+                ];
+
+                return `<div class="max-w-md mx-auto space-y-4 fade-in">
+                    <div class="bg-indigo-600 rounded-2xl p-6 text-white mb-6 shadow-lg shadow-indigo-200">
+                        <p class="text-indigo-200 text-sm">Available Balance</p>
+                        <h2 class="text-4xl font-bold">${state.data.balance.toFixed(2)}৳</h2>
+                    </div>
+                    ${methods.map(m => `
+                        <div onclick="window.openWithdrawModal('${m.name}')" class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:shadow-md transition">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-12 h-12 rounded-full bg-${m.color}-500 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-${m.color}-200">${m.icon}</div>
+                                <span class="font-bold text-gray-700 text-lg">${m.name}</span>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-300"></i>
+                        </div>
+                    `).join('')}
+                </div>`;
+            },
+
+            history: () => {
+                if (state.isGuest) return ui.authBlock();
+                // We'd ideally fetch real data here. Placeholder for logic.
+                // Assuming `state.history` exists or fetching on fly. 
+                // Using skeleton for demo effect.
+                
+                return `<div class="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                            <tr><th class="p-4">Date</th><th class="p-4">Type</th><th class="p-4 text-right">Amount</th><th class="p-4 text-center">Status</th></tr>
+                        </thead>
+                        <tbody class="text-sm text-gray-600" id="hist-body">
+                            <tr><td colspan="4" class="p-8 text-center text-gray-400">Loading records...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <script>
+                    setTimeout(() => {
+                        // Fetching simulation
+                        db.ref('transactions').orderByChild('userId').equalTo(state.user.uid).limitToLast(10).once('value', snap => {
+                            const d = snap.val();
+                            const tbody = document.getElementById('hist-body');
+                            if(!d) { tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center">No Records Found</td></tr>'; return; }
+                            tbody.innerHTML = Object.values(d).reverse().map(t => \`
+                                <tr class="border-t border-gray-100 hover:bg-gray-50">
+                                    <td class="p-4">\${new Date(t.date).toLocaleDateString()}</td>
+                                    <td class="p-4 font-medium">\${t.type}</td>
+                                    <td class="p-4 text-right font-bold \${t.amount>0?'text-green-600':'text-red-600'}">\${t.amount}</td>
+                                    <td class="p-4 text-center"><span class="px-2 py-1 rounded-full text-xs \${t.status=='approved'?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700'}">\${t.status}</span></td>
+                                </tr>
+                            \`).join('');
+                        });
+                    }, 500);
+                <\/script>`;
+            },
+
+            deposit_review: () => {
+                if (!state.isAdmin) return ui.authBlock();
+                return `<div class="max-w-5xl mx-auto space-y-4"><div><h2 class="text-2xl font-extrabold text-gray-800">Deposit Review</h2><p class="text-sm text-gray-500">Review payment screenshots and approve or reject pending deposits.</p></div><div id="deposit-review-list" class="space-y-4"><div class="bg-white rounded-xl p-6 text-center text-gray-500">Loading deposit requests...</div></div></div>
+                <script>
+                setTimeout(async () => {
+                    const box = document.getElementById('deposit-review-list');
+                    if (!box) return;
+                    try {
+                        const snap = await db.ref('transactions').orderByChild('type').equalTo('Deposit').once('value');
+                        const rows = Object.entries(snap.val() || {}).filter(([id,t]) => t.status === 'pending').reverse();
+                        if (!rows.length) { box.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-gray-500">No pending deposits.</div>'; return; }
+                        box.innerHTML = rows.map(([id,t]) => {
+                            const shot = t.screenshotData ? '<img src="' + t.screenshotData + '" alt="Deposit payment screenshot" class="mt-4 max-h-72 rounded-xl border object-contain bg-gray-50">' : '<p class="mt-3 text-red-600 text-sm">No screenshot attached</p>';
+                            return '<article class="bg-white rounded-2xl border shadow-sm p-5"><div class="flex flex-wrap justify-between gap-2"><div><h3 class="font-extrabold text-lg">৳' + Number(t.amount||0).toFixed(2) + ' · ' + (t.method||'Payment') + '</h3><p class="text-sm text-gray-500">User: ' + (t.userId||'—') + ' · TrxID: ' + (t.trxId||'—') + '</p><p class="text-xs text-gray-400">' + (t.date||'') + '</p></div><span class="text-xs rounded-full bg-amber-100 text-amber-700 px-3 py-1 h-fit">PENDING</span></div>' + shot + '<div class="flex gap-3 mt-4"><button onclick="window.reviewDeposit(\'' + id + '\',\'approve\')" class="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl">Approve</button><button onclick="window.reviewDeposit(\'' + id + '\',\'reject\')" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl">Reject</button></div></article>';
+                        }).join('');
+                    } catch (e) { box.innerHTML = '<div class="bg-red-50 text-red-700 p-5 rounded-xl">Could not load deposits. Check Firebase Database Rules.</div>'; }
+                }, 250);
+                <\/script>`;
+            },
+
+            task_review: () => {
+                if (!state.isAdmin) return ui.authBlock();
+                return `<div class="max-w-5xl mx-auto space-y-4"><div><h2 class="text-2xl font-extrabold text-gray-800">Task Screenshot Review</h2><p class="text-sm text-gray-500">Approve or reject user-submitted task proof.</p></div><div id="task-review-list" class="space-y-4"><div class="bg-white rounded-xl p-6 text-center text-gray-500">Loading task submissions...</div></div></div>`;
+            },
+
+            task_manager: () => {
+                if (!state.isAdmin) return ui.authBlock();
+                return `<div class="max-w-4xl mx-auto space-y-5"><div><h2 class="text-2xl font-extrabold">Manage Tasks</h2><p class="text-sm text-gray-500">Create tasks for the home earning sections.</p></div><form onsubmit="window.saveTask(event)" class="bg-white p-5 rounded-2xl border shadow-sm grid sm:grid-cols-2 gap-3"><input id="task-edit-id" type="hidden"><select id="task-category" class="border rounded-xl p-3"><option value="basic">General Tasks</option><option value="telegram">Telegram Join</option></select><input id="task-name" required class="border rounded-xl p-3" placeholder="Task name"><input id="task-reward" type="number" min="0.01" step="0.01" required class="border rounded-xl p-3" placeholder="Reward (৳)"><input id="task-link" type="url" required class="border rounded-xl p-3" placeholder="Task URL"><button class="sm:col-span-2 bg-indigo-600 text-white font-bold rounded-xl py-3">Save Task</button></form><div id="task-manage-list" class="space-y-3"></div></div>`;
+            },
+
+            plan_manager: () => {
+                if (!state.isAdmin) return ui.authBlock();
+                return `<div class="max-w-4xl mx-auto space-y-5"><div><h2 class="text-2xl font-extrabold text-gray-800">Manage Earning Plans</h2><p class="text-sm text-gray-500">Changes appear in the user plan page.</p></div><form onsubmit="window.savePlan(event)" class="bg-white p-5 rounded-2xl border shadow-sm grid sm:grid-cols-2 gap-3"><input id="plan-edit-id" type="hidden"><input id="plan-name" required class="border rounded-xl p-3" placeholder="Plan name"><input id="plan-price" type="number" min="1" step="0.01" required class="border rounded-xl p-3" placeholder="Purchase price (৳)"><input id="plan-daily" type="number" min="0.01" step="0.01" required class="border rounded-xl p-3" placeholder="Daily income (৳)"><input id="plan-days" type="number" min="1" max="3650" required class="border rounded-xl p-3" placeholder="Duration (days)"><button class="sm:col-span-2 bg-indigo-600 text-white font-bold rounded-xl py-3">Save Plan</button></form><div id="plan-list" class="space-y-3"></div></div>
+                <script>
+                setTimeout(async () => {
+                    const box=document.getElementById('plan-list'); if(!box) return;
+                    const snap=await db.ref('plans').once('value'); const plans=snap.val()||{};
+                    box.innerHTML=Object.entries(plans).map(([id,p]) => '<div class="bg-white p-4 rounded-xl border flex flex-wrap items-center justify-between gap-3"><div><b>' + (p.name||'Plan') + '</b><p class="text-sm text-gray-500">৳' + p.price + ' · ৳' + (p.dailyIncome||0) + '/day · ' + p.durationDays + ' days</p></div><div class="flex gap-2"><button onclick="window.editPlan(\'' + id + '\')" class="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700">Edit</button><button onclick="window.deletePlan(\'' + id + '\')" class="px-3 py-2 rounded-lg bg-red-50 text-red-700">Delete</button></div></div>').join('') || '<p class="bg-white p-5 rounded-xl">No plans created yet.</p>';
+                },250);
+                <\/script>`;
+            },
+
+            site_settings: () => {
+                if (!state.isAdmin) return ui.authBlock();
+                return `<div class="max-w-2xl mx-auto bg-white rounded-2xl border shadow-sm p-6 space-y-4"><h2 class="text-2xl font-extrabold">Site Settings</h2><p class="text-sm text-gray-500">Update site identity and payment receiving details.</p><label class="block text-sm font-semibold">Site Name</label><input id="site-name-input" class="w-full border rounded-xl p-3" value="${state.settings.siteName||'Cash BD'}"><label class="block text-sm font-semibold">Logo Image URL</label><input id="site-logo-input" class="w-full border rounded-xl p-3" value="${state.settings.siteLogoUrl||''}" placeholder="https://..."><label class="block text-sm font-semibold">bKash Merchant Number</label><input id="site-bkash-input" class="w-full border rounded-xl p-3" value="${(state.settings.paymentInfo||{}).bkash||''}"><label class="block text-sm font-semibold">Nagad Merchant Number</label><input id="site-nagad-input" class="w-full border rounded-xl p-3" value="${(state.settings.paymentInfo||{}).nagad||''}"><label class="block text-sm font-semibold">Minimum Deposit (৳)</label><input id="site-min-deposit" type="number" min="1" class="w-full border rounded-xl p-3" value="${state.settings.minDepositAmount||50}"><label class="block text-sm font-semibold">Minimum Withdrawal (৳)</label><input id="site-min-withdraw" type="number" min="1" class="w-full border rounded-xl p-3" value="${state.settings.minWithdrawAmount||100}"><hr class="my-2"><h3 class="font-bold">Gmail Sell Settings</h3><label class="block text-sm font-semibold">Price per Gmail (৳)</label><input id="gmail-price" type="number" min="0" step="0.01" class="w-full border rounded-xl p-3" value="${(state.settings.gmailSettings||{}).price||5}"><label class="block text-sm font-semibold">Daily submission limit</label><input id="gmail-limit" type="number" min="1" class="w-full border rounded-xl p-3" value="${(state.settings.gmailSettings||{}).globalLimit||200}"><button onclick="window.saveSiteSettings()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl">Save Site Settings</button></div>`;
+            },
+
+            profile: () => {
+                if (state.isGuest) return ui.authBlock();
+                const d = state.data;
+                return `<div class="max-w-md mx-auto fade-in">
+                    <div class="glass-panel p-8 flex flex-col items-center bg-white relative mb-6">
+                        <button onclick="window.enableEdit()" class="absolute top-4 right-4 text-gray-400 hover:text-indigo-600"><i class="fas fa-edit"></i></button>
+                        <img src="${d.profilePictureUrl || 'https://placehold.co/100x100/4f46e5/ffffff?text='+d.username.charAt(0)}" class="w-24 h-24 rounded-full border-4 border-indigo-100 shadow-xl mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800" id="prof-name">${d.fullname || d.username}</h2>
+                        <p class="text-gray-500 text-sm">@<span id="prof-user">${d.username}</span></p>
+                        
+                        <!-- Edit Form Hidden -->
+                        <div id="edit-form" class="hidden w-full mt-4 space-y-3">
+                            <input type="text" id="edit-fullname" value="${d.fullname||''}" class="w-full p-2 border rounded" placeholder="Full Name">
+                            <input type="text" id="edit-username" value="${d.username}" class="w-full p-2 border rounded" placeholder="Username">
+                            <div class="flex gap-2">
+                                <button onclick="window.saveProfile()" class="flex-1 bg-indigo-600 text-white py-2 rounded">Save</button>
+                                <button onclick="window.disableEdit()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm p-4 space-y-4">
+                        <div class="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer">
+                            <span class="text-gray-600 font-medium"><i class="fas fa-globe mr-3 text-indigo-400"></i> Language</span>
+                            <div class="flex space-x-2">
+                                <button onclick="lang.set('en')" class="px-2 py-1 text-xs rounded ${state.currentLang=='en'?'bg-indigo-600 text-white':'bg-gray-100'}">EN</button>
+                                <button onclick="lang.set('bn')" class="px-2 py-1 text-xs rounded ${state.currentLang=='bn'?'bg-indigo-600 text-white':'bg-gray-100'}">BN</button>
+                            </div>
+                        </div>
+                        <div onclick="auth.signOut()" class="flex justify-between items-center p-3 hover:bg-red-50 rounded-lg cursor-pointer text-red-500">
+                            <span class="font-medium"><i class="fas fa-sign-out-alt mr-3"></i> ${lang.t('logout')}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }
+        };
+
+        // --- 6. BLOCKERS & HELPERS ---
+        ui.authBlock = () => `<div class="text-center mt-20 fade-in"><div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-500 text-2xl"><i class="fas fa-lock"></i></div><h3 class="text-xl font-bold text-gray-800">${lang.t('no_access')}</h3><p class="text-gray-500 mb-6">${lang.t('no_access_desc')}</p><button onclick="authHandler.trigger()" class="btn-primary px-8 py-3 rounded-xl font-bold shadow-lg">Login Now</button></div>`;
+        
+        ui.inactiveBlock = () => `<div class="text-center mt-20 fade-in"><div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500 text-2xl"><i class="fas fa-ban"></i></div><h3 class="text-xl font-bold text-gray-800">${lang.t('act_msg')}</h3><p class="text-gray-500 mb-6">${lang.t('act_desc')}</p></div>`;
+
+        // --- 7. GLOBAL WINDOW FUNCTIONS (For HTML Onclick) ---
+        window.openWithdrawModal = (method) => {
+            if (!state.data.isAccountActive) return alert(lang.t('act_desc'));
+            
+            const content = `
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-${method=='Bkash'?'pink':'orange'}-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold text-${method=='Bkash'?'pink':'orange'}-600">${method[0]}</div>
+                    <h3 class="text-xl font-bold mb-4">Withdraw via ${method}</h3>
+                    <form onsubmit="window.submitWithdraw(event, '${method}')" class="space-y-4 text-left">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase">Number</label>
+                            <input type="tel" name="num" class="w-full p-3 bg-gray-50 border rounded-xl" required>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase">Amount</label>
+                            <input type="number" name="amt" class="w-full p-3 bg-gray-50 border rounded-xl" required>
+                        </div>
+                        <button class="btn-primary w-full py-3 rounded-xl font-bold">Withdraw</button>
+                    </form>
+                </div>`;
+            document.getElementById('gen-modal-content').innerHTML = content;
+            ui.openModal('gen-modal');
+        };
+
+        window.submitWithdraw = async (e, method) => {
+            e.preventDefault();
+            const num = e.target.num.value;
+            const amt = parseFloat(e.target.amt.value);
+            
+            if(amt > state.data.balance) return alert("Insufficient Balance");
+            if(amt < (state.settings.minWithdrawAmount || 100)) return alert(`Min withdraw: ${state.settings.minWithdrawAmount}`);
+
+            try {
+                await db.ref('transactions').push({
+                    userId: state.user.uid,
+                    type: 'Withdrawal',
+                    amount: -amt,
+                    details: `${method} to ${num}`,
+                    date: new Date().toISOString(),
+                    status: 'pending'
+                });
+                await db.ref(`users/${state.user.uid}/balance`).set(state.data.balance - amt);
+                ui.closeModal('gen-modal');
+                alert("Withdrawal Requested");
+            } catch(err) { alert(err.message); }
+        };
+
+        window.initPayment = (type, amount, detail) => {
+            if (!state.user) return authHandler.trigger();
+            const num = state.settings.paymentInfo?.bkash || "01XXX";
+            const content = `
+                <div class="text-center">
+                    <h3 class="text-lg font-bold text-indigo-600 mb-2">${type}</h3>
+                    <p class="text-2xl font-bold mb-4">${amount}৳</p>
+                    <div class="bg-gray-100 p-4 rounded-xl mb-4">
+                        <p class="text-xs text-gray-500">Send Money To</p>
+                        <p class="text-lg font-mono font-bold select-all">${num}</p>
+                    </div>
+                    <form onsubmit="window.submitPayment(event, '${type}', ${amount}, '${detail||''}')" class="space-y-3">
+                        <input type="text" id="trx-id" placeholder="Transaction ID" class="w-full p-3 border rounded-xl" required>
+                        <button class="btn-primary w-full py-3 rounded-xl font-bold">Submit</button>
+                    </form>
+                </div>`;
+            document.getElementById('gen-modal-content').innerHTML = content;
+            ui.openModal('gen-modal');
+        };
+
+        window.submitPayment = async (e, type, amount, detail) => {
+            e.preventDefault();
+            const trx = document.getElementById('trx-id').value;
+            await db.ref('transactions').push({
+                userId: state.user.uid,
+                username: state.data.username,
+                type,
+                amount,
+                details: detail,
+                trxId: trx,
+                date: new Date().toISOString(),
+                status: 'pending'
+            });
+            ui.closeModal('gen-modal');
+            alert("Request Submitted");
+        };
+
+        window.runTask = async (tid, link, reward, btn) => {
+            // Task Logic (Simplified for brevity)
+            const date = new Date().toISOString().split('T')[0];
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner border-indigo-600"></div>';
+            
+            const w = window.open(link, '_blank');
+            if(!w) { alert("Allow Popups"); btn.disabled=false; return; }
+
+            setTimeout(async () => {
+                try {
+                    await db.ref(`users/${state.user.uid}/balance`).set((state.data.balance||0) + reward);
+                    // Mark complete in DB (omitted for brevity)
+                    btn.innerHTML = '<i class="fas fa-check"></i>';
+                    alert(`Task Complete! +${reward}৳`);
+                } catch(e) { btn.disabled = false; }
+            }, 5000);
+        };
+        
+        // Profile Edit
+        window.enableEdit = () => {
+            document.getElementById('prof-name').classList.add('hidden');
+            document.getElementById('prof-user').classList.add('hidden');
+            document.getElementById('edit-form').classList.remove('hidden');
+        };
+        window.disableEdit = () => {
+            document.getElementById('prof-name').classList.remove('hidden');
+            document.getElementById('prof-user').classList.remove('hidden');
+            document.getElementById('edit-form').classList.add('hidden');
+        };
+        window.saveProfile = async () => {
+            const full = document.getElementById('edit-fullname').value;
+            const user = document.getElementById('edit-username').value;
+            if(!user) return alert("Username required");
+            await db.ref(`users/${state.user.uid}`).update({ fullname: full, username: user });
+            window.disableEdit();
+        };
+
+        window.loadDepositReview = async () => {
+            const box = document.getElementById('deposit-review-list');
+            if (!box || !state.isAdmin) return;
+            try {
+                const snap = await db.ref('transactions').orderByChild('type').equalTo('Deposit').once('value');
+                const rows = Object.entries(snap.val() || {}).filter(([id,t]) => t.status === 'pending').reverse();
+                if (!rows.length) { box.innerHTML = '<div class="bg-white rounded-xl p-8 text-center text-gray-500">No pending deposits.</div>'; return; }
+                box.innerHTML = rows.map(([id,t]) => {
+                    const shot = t.screenshotData ? '<img src="' + t.screenshotData + '" alt="Deposit payment screenshot" class="mt-4 max-h-72 rounded-xl border object-contain bg-gray-50">' : '<p class="mt-3 text-red-600 text-sm">No screenshot attached</p>';
+                    return '<article class="bg-white rounded-2xl border shadow-sm p-5"><div class="flex flex-wrap justify-between gap-2"><div><h3 class="font-extrabold text-lg">৳' + Number(t.amount||0).toFixed(2) + ' · ' + (t.method||'Payment') + '</h3><p class="text-sm text-gray-500">User: ' + (t.userId||'—') + ' · TrxID: ' + (t.trxId||'—') + '</p><p class="text-xs text-gray-400">' + (t.date||'') + '</p></div><span class="text-xs rounded-full bg-amber-100 text-amber-700 px-3 py-1 h-fit">PENDING</span></div>' + shot + '<div class="flex gap-3 mt-4"><button onclick="window.reviewDeposit(\'' + id + '\',\'approve\')" class="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl">Approve</button><button onclick="window.reviewDeposit(\'' + id + '\',\'reject\')" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl">Reject</button></div></article>';
+                }).join('');
+            } catch (e) {
+                box.innerHTML = '<div class="bg-red-50 text-red-700 p-5 rounded-xl">Could not load deposits. Check Firebase Database Rules.</div>';
+            }
+        };
+
+        window.loadTaskReview = async () => {
+            const box=document.getElementById('task-review-list');
+            if (!box || !state.isAdmin) return;
+            try {
+                const snap=await db.ref('taskSubmissions').once('value');
+                const rows=Object.entries(snap.val()||{}).filter(([id,t])=>t.status==='pending').reverse();
+                if(!rows.length){box.innerHTML='<div class="bg-white rounded-xl p-8 text-center text-gray-500">No pending task screenshots.</div>';return;}
+                box.innerHTML=rows.map(([id,t])=>{
+                    const shot=t.screenshotData?'<img src="'+t.screenshotData+'" alt="Task proof" class="mt-4 max-h-72 rounded-xl border object-contain bg-gray-50">':'<p class="text-red-600">No screenshot</p>';
+                    return '<article class="bg-white rounded-2xl border shadow-sm p-5"><div class="flex flex-wrap justify-between gap-2"><div><h3 class="font-extrabold text-lg">'+(t.taskName||'Task')+'</h3><p class="text-sm text-gray-500">User: '+(t.userId||'—')+' · Category: '+(t.category||'basic')+'</p><p class="text-sm font-bold text-emerald-600">Reward: ৳'+Number(t.reward||0).toFixed(2)+'</p><p class="text-xs text-gray-400">'+(t.date||'')+'</p></div><span class="text-xs rounded-full bg-amber-100 text-amber-700 px-3 py-1 h-fit">PENDING</span></div>'+shot+'<div class="flex gap-3 mt-4"><button onclick="window.reviewTask(\''+id+'\',\'approve\')" class="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-xl">Approve</button><button onclick="window.reviewTask(\''+id+'\',\'reject\')" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-xl">Reject</button></div></article>';
+                }).join('');
+            } catch(e){box.innerHTML='<div class="bg-red-50 text-red-700 p-5 rounded-xl">Could not load task submissions. Check Firebase Rules.</div>';}
+        };
+
+        window.reviewTask = async (id, decision) => {
+            if(!state.isAdmin || !confirm((decision==='approve'?'Approve':'Reject')+' this task proof?')) return;
+            const ref=db.ref('taskSubmissions/'+id);
+            const lock=await ref.transaction(current=>{
+                if(!current || current.status!=='pending') return;
+                current.status='processing'; current.reviewedBy=state.user.uid; return current;
+            });
+            if(!lock.committed) return alert('This task has already been reviewed.');
+            const item=lock.snapshot.val();
+            if(decision==='reject'){
+                await ref.update({status:'rejected',reviewedAt:new Date().toISOString()});
+                alert('Task proof rejected.'); app.nav('task_review',true); return;
+            }
+            const userRef=db.ref('users/'+item.userId);
+            const credit=await userRef.transaction(user=>{
+                if(!user) return;
+                user.taskCredits=user.taskCredits||{};
+                if(user.taskCredits[id]) return;
+                user.balance=Number(user.balance||0)+Number(item.reward||0);
+                user.taskCredits[id]=true;
+                user.completedTasks=user.completedTasks||{};
+                user.completedTasks[item.category==='basic' ? item.taskId : ('telegram_'+item.taskId)]=true;
+                user.lastTaskDate=new Date().toISOString().slice(0,10);
+                return user;
+            });
+            if(!credit.committed){await ref.update({status:'pending'});return alert('Wallet credit failed; task returned to pending.');}
+            await ref.update({status:'approved',reviewedAt:new Date().toISOString()});
+            alert('Task approved and reward credited.'); app.nav('task_review',true);
+        };
+
+        window.loadTaskList = async () => {
+            const box=document.getElementById('task-manage-list'); if(!box||!state.isAdmin)return;
+            const snap=await db.ref('tasks').once('value'); const data=snap.val()||{};
+            const rows=[];
+            ['basic','telegram'].forEach(category=>Object.entries(data[category]||{}).forEach(([id,t])=>rows.push({id,category,...t})));
+            box.innerHTML=rows.map(t=>'<div class="bg-white p-4 rounded-xl border flex flex-wrap items-center justify-between gap-3"><div><b>'+t.name+'</b><p class="text-sm text-gray-500">'+t.category+' · ৳'+t.reward+' · '+t.link+'</p></div><div class="flex gap-2"><button onclick="window.editTask(\''+t.id+'\',\''+t.category+'\')" class="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700">Edit</button><button onclick="window.deleteTask(\''+t.id+'\',\''+t.category+'\')" class="px-3 py-2 rounded-lg bg-red-50 text-red-700">Delete</button></div></div>').join('')||'<p class="bg-white p-5 rounded-xl">No tasks created.</p>';
+        };
+        window.saveTask = async event => {
+            event.preventDefault(); if(!state.isAdmin)return;
+            const id=document.getElementById('task-edit-id').value;
+            const category=document.getElementById('task-category').value;
+            const item={name:document.getElementById('task-name').value.trim(),reward:Number(document.getElementById('task-reward').value),link:document.getElementById('task-link').value.trim()};
+            if(!item.name||item.reward<=0||!/^https?:\/\//i.test(item.link))return alert('Enter valid task details.');
+            const ref=db.ref('tasks/'+category);
+            if(id) await ref.child(id).update(item); else await ref.push(item);
+            alert('Task saved.'); app.nav('task_manager',true);
+        };
+        window.editTask = async (id,category) => {
+            const snap=await db.ref('tasks/'+category+'/'+id).once('value'); const t=snap.val(); if(!t)return;
+            document.getElementById('task-edit-id').value=id; document.getElementById('task-category').value=category;
+            document.getElementById('task-name').value=t.name||''; document.getElementById('task-reward').value=t.reward||'';
+            document.getElementById('task-link').value=t.link||''; window.scrollTo({top:0,behavior:'smooth'});
+        };
+        window.deleteTask = async (id,category) => {if(!state.isAdmin||!confirm('Delete this task?'))return;await db.ref('tasks/'+category+'/'+id).remove();app.nav('task_manager',true);};
+
+        window.loadPlanList = async () => {
+            const box=document.getElementById('plan-list');
+            if (!box || !state.isAdmin) return;
+            const snap=await db.ref('plans').once('value');
+            const plans=snap.val()||{};
+            box.innerHTML=Object.entries(plans).map(([id,p]) => '<div class="bg-white p-4 rounded-xl border flex flex-wrap items-center justify-between gap-3"><div><b>' + (p.name||'Plan') + '</b><p class="text-sm text-gray-500">৳' + p.price + ' · ৳' + (p.dailyIncome||0) + '/day · ' + p.durationDays + ' days</p></div><div class="flex gap-2"><button onclick="window.editPlan(\'' + id + '\')" class="px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700">Edit</button><button onclick="window.deletePlan(\'' + id + '\')" class="px-3 py-2 rounded-lg bg-red-50 text-red-700">Delete</button></div></div>').join('') || '<p class="bg-white p-5 rounded-xl">No plans created yet.</p>';
+        };
+
+        window.reviewDeposit = async (id, decision) => {
+            if (!state.isAdmin || !confirm(`${decision === 'approve' ? 'Approve' : 'Reject'} this deposit?`)) return;
+            const ref = db.ref(`transactions/${id}`);
+            const lock = await ref.transaction(current => {
+                if (!current || current.type !== 'Deposit' || current.status !== 'pending') return;
+                current.status = 'processing';
+                current.reviewedBy = state.user.uid;
+                return current;
+            });
+            if (!lock.committed) return alert('This request has already been processed.');
+            const item = lock.snapshot.val();
+            if (decision === 'reject') {
+                await ref.update({status:'rejected', reviewedAt:new Date().toISOString()});
+                alert('Deposit rejected.');
+                app.nav('deposit_review', true);
+                return;
+            }
+            const userRef = db.ref(`users/${item.userId}`);
+            const credit = await userRef.transaction(user => {
+                if (!user) return;
+                user.depositCredits = user.depositCredits || {};
+                if (user.depositCredits[id]) return;
+                user.balance = Number(user.balance || 0) + Number(item.amount || 0);
+                user.depositCredits[id] = true;
+                return user;
+            });
+            if (!credit.committed) {
+                await ref.update({status:'pending'});
+                return alert('Could not credit the wallet. Request returned to pending.');
+            }
+            await ref.update({status:'approved', reviewedAt:new Date().toISOString()});
+            alert('Deposit approved and wallet credited.');
+            app.nav('deposit_review', true);
+        };
+
+        window.savePlan = async (event) => {
+            event.preventDefault();
+            if (!state.isAdmin) return;
+            const id=document.getElementById('plan-edit-id').value;
+            const plan={name:document.getElementById('plan-name').value.trim(),price:Number(document.getElementById('plan-price').value),dailyIncome:Number(document.getElementById('plan-daily').value),durationDays:Number(document.getElementById('plan-days').value)};
+            if (!plan.name || plan.price<=0 || plan.dailyIncome<=0 || plan.durationDays<1) return alert('Enter valid plan details.');
+            if (id) await db.ref(`plans/${id}`).update(plan); else await db.ref('plans').push(plan);
+            alert('Plan saved.'); app.nav('plan_manager',true);
+        };
+        window.editPlan = async (id) => {
+            const snap=await db.ref(`plans/${id}`).once('value'); const p=snap.val(); if(!p) return;
+            document.getElementById('plan-edit-id').value=id;
+            document.getElementById('plan-name').value=p.name||'';
+            document.getElementById('plan-price').value=p.price||'';
+            document.getElementById('plan-daily').value=p.dailyIncome||'';
+            document.getElementById('plan-days').value=p.durationDays||'';
+            window.scrollTo({top:0,behavior:'smooth'});
+        };
+        window.deletePlan = async (id) => {
+            if (!state.isAdmin || !confirm('Delete this plan?')) return;
+            await db.ref(`plans/${id}`).remove(); app.nav('plan_manager',true);
+        };
+        window.saveSiteSettings = async () => {
+            if (!state.isAdmin) return;
+            const updates={
+                siteName:document.getElementById('site-name-input').value.trim() || 'Cash BD',
+                siteLogoUrl:document.getElementById('site-logo-input').value.trim(),
+                paymentInfo:{bkash:document.getElementById('site-bkash-input').value.trim(),nagad:document.getElementById('site-nagad-input').value.trim()},
+                minDepositAmount:Number(document.getElementById('site-min-deposit').value)||50,
+                minWithdrawAmount:Number(document.getElementById('site-min-withdraw').value)||100
+            };
+            updates.gmailSettings={
+                price:Number(document.getElementById('gmail-price').value)||5,
+                globalLimit:Number(document.getElementById('gmail-limit').value)||200
+            };
+            await db.ref('admin').update(updates);
+            await db.ref('admin/gmailSettings').update(updates.gmailSettings);
+            state.settings={...state.settings,...updates};
+            document.title=updates.siteName;
+            const title=document.getElementById('sidebar-title'); if(title) title.textContent=updates.siteName;
+            const logo=document.getElementById('sidebar-logo'); if(logo) logo.innerHTML=updates.siteLogoUrl ? `<img src="${updates.siteLogoUrl}" alt="Site logo" class="w-full h-full object-contain">` : '<i class="fas fa-gem"></i>';
+            alert('Site settings updated.');
+        };
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', app.init);
+
+    </script>
+</body>
+</html>
