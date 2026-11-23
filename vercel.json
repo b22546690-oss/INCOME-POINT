@@ -12,6 +12,10 @@
     {
       "src": "admin.html",
       "use": "@vercel/static"
+    },
+    {
+      "src": "king/admin.html",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
