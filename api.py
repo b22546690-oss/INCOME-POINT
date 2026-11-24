@@ -403,6 +403,15 @@ def buy_plan():
     db_request(f"users/{uid}/premiumPlan", "PUT", plan_name)
     db_request(f"users/{uid}/activePlanUntil", "PUT", expiry)
     db_request(f"users/{uid}/lastClaimDate", "PUT", "")
+    plan_snapshot = {
+        "name": plan_name,
+        "price": amount,
+        "dailyIncome": float(plan.get("dailyIncome", 0) or 0),
+        "durationDays": duration,
+        "purchasedAt": datetime.now().isoformat()
+    }
+    db_request(f"users/{uid}/activePlanDetails", "PUT", plan_snapshot)
+    db_request(f"users/{uid}/planDaysClaimed", "PUT", 0)
     trx = {
         "userId": uid, "type": "Plan Purchase", "amount": -amount,
         "details": f"Plan: {plan_name}", "date": datetime.now().isoformat(),
@@ -456,36 +465,42 @@ def complete_task():
 @app.route('/api/claim_daily', methods=['POST'])
 @login_required
 def claim_daily():
-    d = request.json
     uid = current_uid()
     user = db_request(f"users/{uid}", "GET") or {}
-    plans = db_request("plans", "GET") or {}
-    active_plan = next((p for p in plans.values() if p.get("name") == user.get("premiumPlan")), None)
-    if not active_plan:
+    plan = user.get("activePlanDetails") or {}
+    if not user.get("premiumPlan") or not plan:
         return jsonify({"success": False, "message": "No active earning plan"}), 400
-    duration = max(int(active_plan.get("durationDays", 0) or 0), 1)
-    expires_at = user.get("activePlanUntil")
-    if expires_at:
-        try:
-            if datetime.fromisoformat(expires_at) <= datetime.now():
-                return jsonify({"success": False, "message": "Your earning plan has expired"}), 400
-        except (ValueError, TypeError):
-            return jsonify({"success": False, "message": "Plan expiry data is invalid"}), 400
-    amount = float(active_plan.get("dailyIncome", 0) or 0)
-    if amount <= 0:
-        amount = (float(active_plan.get("price", 0) or 0) * 1.10) / duration
+    try:
+        duration = max(int(plan.get("durationDays", 0) or 0), 1)
+        amount = float(plan.get("dailyIncome", 0) or 0)
+        claimed_days = int(user.get("planDaysClaimed", 0) or 0)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Plan reward configuration is invalid"}), 400
     if amount <= 0:
         return jsonify({"success": False, "message": "Daily reward is not configured"}), 400
+    expires_at = user.get("activePlanUntil")
+    if not expires_at:
+        return jsonify({"success": False, "message": "Plan expiry is missing"}), 400
+    try:
+        if datetime.fromisoformat(expires_at) <= datetime.now():
+            return jsonify({"success": False, "message": "Your earning plan has expired"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "message": "Plan expiry data is invalid"}), 400
+    if claimed_days >= duration:
+        return jsonify({"success": False, "message": "All daily rewards for this plan have been claimed"}), 400
     today = datetime.now().strftime("%Y-%m-%d")
-    
-    if user.get('lastClaimDate') == today:
-        return jsonify({"success": False, "message": "Already claimed today"})
-        
-    new_balance = user.get('balance', 0) + amount
+    if user.get("lastClaimDate") == today:
+        return jsonify({"success": False, "message": "Already claimed today"}), 409
+    new_balance = float(user.get("balance", 0) or 0) + amount
     db_request(f"users/{uid}/balance", "PUT", new_balance)
     db_request(f"users/{uid}/lastClaimDate", "PUT", today)
-    
-    return jsonify({"success": True})
+    db_request(f"users/{uid}/planDaysClaimed", "PUT", claimed_days + 1)
+    db_request("transactions", "POST", {
+        "userId": uid, "type": "Daily Plan Reward", "amount": amount,
+        "details": f"{plan.get('name', 'Plan')} · Day {claimed_days + 1}/{duration}",
+        "date": datetime.now().isoformat(), "status": "approved"
+    })
+    return jsonify({"success": True, "amount": amount, "daysClaimed": claimed_days + 1, "remainingDays": duration - claimed_days - 1, "newBalance": new_balance})
 
 @app.route('/api/claim_ref_reward', methods=['POST'])
 @login_required
@@ -530,3 +545,109 @@ def health():
         "databaseConfigured": bool(DB_URL and DB_SECRET),
         "sessionConfigured": bool(app.secret_key)
     })
+
+
+# ---- INCOME-POINT earning workflows ----
+def _valid_uid(uid):
+    return isinstance(uid, str) and 8 <= len(uid) <= 128 and re.match(r'^[A-Za-z0-9_-]+$', uid)
+
+@app.route('/api/earning/account-listing', methods=['POST'])
+def earning_account_listing():
+    d=request.get_json(silent=True) or {}
+    uid=d.get('uid'); platform=str(d.get('platform','')).strip().title()
+    contact=str(d.get('contact','')).strip()
+    profile=str(d.get('profileUrl','')).strip()
+    proof=str(d.get('proof','')).strip()
+    if not _valid_uid(uid) or platform not in ('Facebook','Instagram') or not contact or len(contact)>180 or not profile.startswith(('https://','http://')) or not proof or len(proof)>1000:
+        return jsonify(success=False,message='Please provide valid listing details.'),400
+    if any(x in (contact+' '+proof).lower() for x in ('password','2fa code','cookie','recovery phrase','private key')):
+        return jsonify(success=False,message='Do not submit passwords, 2FA codes, cookies or recovery secrets.'),400
+    item={'userId':uid,'platform':platform,'contact':contact,'profileUrl':profile,'ownershipProof':proof,'status':'pending','createdAt':datetime.now().isoformat()}
+    db_request('accountListings','POST',item)
+    return jsonify(success=True,message='Listing submitted for admin review.')
+
+@app.route('/api/earning/create-job', methods=['POST'])
+def earning_create_job():
+    d=request.get_json(silent=True) or {}
+    uid=d.get('uid'); title=str(d.get('title','')).strip(); desc=str(d.get('description','')).strip()
+    try: reward=float(d.get('reward')); slots=int(d.get('slots'))
+    except (TypeError,ValueError): return jsonify(success=False,message='Invalid reward or worker count.'),400
+    if not _valid_uid(uid) or not title or len(title)>100 or not desc or len(desc)>2000 or reward<=0 or slots<1 or slots>500:
+        return jsonify(success=False,message='Please complete all job details.'),400
+    user=db_request(f'users/{uid}','GET') or {}
+    settings=db_request('admin','GET') or {}
+    post_fee=float(settings.get('jobPostFee',0) or 0)
+    required=reward*slots+post_fee
+    balance=float(user.get('balance',0) or 0)
+    if balance<required: return jsonify(success=False,message=f'Insufficient wallet balance. Required ৳{required:.2f}.'),400
+    # Reserve the full job budget until the job is completed/cancelled.
+    db_request(f'users/{uid}/balance','PUT',round(balance-required,2))
+    job={'ownerId':uid,'title':title,'description':desc,'reward':reward,'slots':slots,'remainingSlots':slots,'reservedBudget':reward*slots,'postFee':post_fee,'status':'pending','kind':'user_job','createdAt':datetime.now().isoformat()}
+    db_request('userJobs','POST',job)
+    db_request('transactions','POST',{'userId':uid,'type':'Job Budget Reserved','amount':-required,'status':'approved','date':datetime.now().isoformat(),'details':title})
+    return jsonify(success=True,message='Job submitted. It will appear in Micro Jobs after admin approval.')
+
+@app.route('/api/earning/submit-work', methods=['POST'])
+def earning_submit_work():
+    d=request.get_json(silent=True) or {}
+    uid=d.get('uid'); task_id=str(d.get('taskId','')).strip(); proof=str(d.get('proof','')).strip()
+    if not _valid_uid(uid) or not task_id or len(proof)<2 or len(proof)>5000:
+        return jsonify(success=False,message='Invalid submission.'),400
+    task=db_request(f'tasks/{task_id}','GET')
+    if not task or task.get('status')!='approved' or task.get('enabled') is False:
+        return jsonify(success=False,message='This task is not available.'),404
+    existing=db_request('workSubmissions','GET') or {}
+    count=sum(1 for x in existing.values() if x.get('taskId')==task_id and x.get('userId')==uid)
+    if count>=int(task.get('perUserLimit',1) or 1):
+        return jsonify(success=False,message='You have reached the task limit.'),409
+    job_task=bool(task.get('jobId'))
+    item={'taskId':task_id,'userId':uid,'ownerId':task.get('ownerId'),'proof':proof,'status':'pending_owner' if job_task else 'pending','reward':float(task.get('reward',0) or 0),'createdAt':datetime.now().isoformat()}
+    db_request('workSubmissions','POST',item)
+    return jsonify(success=True,message='Work submitted for review.')
+
+@app.route('/api/earning/review-job-submission', methods=['POST'])
+def earning_review_job_submission():
+    d=request.get_json(silent=True) or {}
+    owner=d.get('uid'); submission_id=str(d.get('submissionId','')); decision=d.get('decision')
+    if not _valid_uid(owner) or not submission_id or decision not in ('approve','reject'):
+        return jsonify(success=False,message='Invalid review request.'),400
+    sub=db_request(f'workSubmissions/{submission_id}','GET') or {}
+    if sub.get('ownerId')!=owner or sub.get('status')!='pending_owner':
+        return jsonify(success=False,message='You are not allowed to review this submission.'),403
+    if decision=='approve':
+        user=db_request(f"users/{sub['userId']}",'GET') or {}
+        db_request(f"users/{sub['userId']}/balance",'PUT',round(float(user.get('balance',0) or 0)+float(sub.get('reward',0) or 0),2))
+        db_request('transactions','POST',{'userId':sub['userId'],'type':'User Job Reward','amount':float(sub.get('reward',0) or 0),'status':'approved','date':datetime.now().isoformat(),'details':sub.get('taskId')})
+    db_request(f'workSubmissions/{submission_id}/status','PUT','approved' if decision=='approve' else 'rejected')
+    db_request(f'workSubmissions/{submission_id}/reviewedAt','PUT',datetime.now().isoformat())
+    return jsonify(success=True,message='Submission reviewed.')
+
+@app.route('/api/earning/my-jobs', methods=['GET'])
+def earning_my_jobs():
+    uid=request.args.get('uid','')
+    if not _valid_uid(uid): return jsonify(success=False,message='Invalid user.'),400
+    jobs=db_request('userJobs','GET') or {}
+    subs=db_request('workSubmissions','GET') or {}
+    mine=[{'id':k,**v} for k,v in jobs.items() if v.get('ownerId')==uid]
+    reviews=[{'id':k,**v} for k,v in subs.items() if v.get('ownerId')==uid and v.get('status')=='pending_owner']
+    return jsonify(jobs=mine,pendingReviews=reviews)
+
+@app.route('/api/earning/submit-typing', methods=['POST'])
+def earning_submit_typing():
+    d=request.get_json(silent=True) or {}
+    d['proof']=d.get('typedText','')
+    return earning_submit_work_internal(d,'typing')
+
+def earning_submit_work_internal(d,kind):
+    uid=d.get('uid'); task_id=str(d.get('taskId','')).strip(); proof=str(d.get('proof','')).strip()
+    if not _valid_uid(uid) or not task_id or not proof or len(proof)>10000:
+        return jsonify(success=False,message='Invalid typing submission.'),400
+    task=db_request(f'tasks/{task_id}','GET') or {}
+    if task.get('kind')!=kind or task.get('status')!='approved' or task.get('enabled') is False:
+        return jsonify(success=False,message='This task is unavailable.'),404
+    existing=db_request('workSubmissions','GET') or {}
+    count=sum(1 for x in existing.values() if x.get('taskId')==task_id and x.get('userId')==uid)
+    if count>=int(task.get('perUserLimit',1) or 1): return jsonify(success=False,message='Task limit reached.'),409
+    db_request('workSubmissions','POST',{'taskId':task_id,'userId':uid,'proof':proof,'status':'pending','reward':float(task.get('reward',0) or 0),'createdAt':datetime.now().isoformat()})
+    return jsonify(success=True,message='Typing work submitted for review.'),200
+
