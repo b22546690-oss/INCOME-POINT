@@ -927,55 +927,30 @@
 
         const pages = {
             dashboard: () => {
-                const bal = state.data.balance || 0;
-                const wd = state.data.totalWithdraw || 0;
-                const inc = bal + wd;
-                const refs = state.data.referrals ? Object.keys(state.data.referrals).length : 0;
-                let banner = '';
-                if (state.isGuest) {
-                    banner = `<div class="glass-panel p-6 mb-6 border-l-4 border-indigo-500 flex justify-between items-center"><div><h2 class="text-lg font-bold text-gray-800">${window.appLang.t('welcome')}</h2><p class="text-sm text-gray-500">${window.appLang.t('no_access_desc')}</p></div><button onclick="authHandler.trigger()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow">${window.appLang.t('login')}</button></div>`;
-                } else {
-                    banner = `<div class="glass-panel p-5 mb-6 border-l-4 border-emerald-500"><h2 class="text-lg font-bold text-gray-800">Welcome back, ${state.data.fullname || state.data.username || 'Member'}!</h2><p class="text-sm text-gray-500 mt-1">Choose a service and start using your dashboard.</p></div>`;
-                }
-
-                const card = (i, v, l, c) => `
-                    <div class="dash-card bg-white shadow-sm border border-gray-100">
-                        <div class="z-10">
-                            <h3 class="text-2xl font-bold text-gray-800">${state.isGuest ? '-' : v}</h3>
-                            <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-1">${window.appLang.t(l)}</p>
-                        </div>
-                        <i class="fas ${i} card-icon-bg text-${c}-500"></i>
-                    </div>`;
-
-                const rawLink = state.data.refId || '...';
-                const fullUrl = state.data.refId ? `${window.location.origin}/ref/${state.data.refId}` : '';
-                const refAmount = state.settings.refBonus || 20;
-                const refRewardText = window.appLang.t('ref_reward_txt').replace('{amount}', refAmount);
-                
-                const refSec = (!state.isGuest) ? `
-                    <div class="glass-panel p-6 bg-white mt-6">
-                        <h3 class="font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-share-alt mr-2 text-indigo-500"></i> ${window.appLang.t('share')}</h3>
-                        <div class="flex items-center space-x-2 bg-gray-50 p-3 rounded-xl border border-gray-200 overflow-hidden">
-                            <div class="flex-1 overflow-hidden">
-                                <code class="text-indigo-600 font-mono text-xl font-bold">${rawLink}</code>
-                            </div>
-                            <button data-link="${fullUrl}" onclick="window.copyRef(this)" class="p-2 bg-white shadow rounded-lg hover:bg-gray-50 flex-shrink-0"><i class="fas fa-copy text-gray-600"></i></button>
-                        </div>
-                        <p class="text-xs italic text-gray-500 mt-2 text-center font-medium">${refRewardText}</p>
-                    </div>` : '';
-
-                const shortcuts = `
-                    <section class="my-6">
-                        <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-extrabold text-gray-800">Explore & Earn</h3><span class="text-xs text-gray-400">Choose a service</span></div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button onclick="app.nav('gmail_sell')" class="text-left rounded-2xl p-5 min-h-[142px] text-white shadow-lg bg-gradient-to-br from-indigo-600 to-blue-500"><i class="fas fa-envelope-open-text text-3xl mb-4"></i><span class="block font-bold">Gmail Sell</span><span class="text-xs text-white/80">Submit eligible Gmail</span></button>
-                            <button onclick="app.nav('my_job')" class="text-left rounded-2xl p-5 min-h-[142px] text-white shadow-lg bg-gradient-to-br from-violet-600 to-fuchsia-500"><i class="fas fa-list-check text-3xl mb-4"></i><span class="block font-bold">Tasks</span><span class="text-xs text-white/80">Complete available tasks</span></button>
-                            <button onclick="app.nav('telegram_tasks')" class="text-left rounded-2xl p-5 min-h-[142px] text-white shadow-lg bg-gradient-to-br from-sky-600 to-cyan-500"><i class="fab fa-telegram-plane text-3xl mb-4"></i><span class="block font-bold">Telegram Join</span><span class="text-xs text-white/80">Explore channel tasks</span></button>
-                            <button onclick="app.nav('premium_plan')" class="text-left rounded-2xl p-5 min-h-[142px] text-white shadow-lg bg-gradient-to-br from-amber-500 to-orange-500"><i class="fas fa-crown text-3xl mb-4"></i><span class="block font-bold">Plans</span><span class="text-xs text-white/80">Explore earning plans</span></button>
-                            <button onclick="app.nav('payment')" class="col-span-2 text-left rounded-2xl p-5 min-h-[100px] text-white shadow-lg bg-gradient-to-r from-emerald-600 to-teal-500"><i class="fas fa-wallet text-2xl mb-2"></i><span class="block font-bold">Deposit Funds</span><span class="text-xs text-white/80">Add funds before purchasing a plan</span></button>
-                        </div>
-                    </section>`;
-                return `<div class="max-w-5xl mx-auto fade-in">${banner}${refSec}${shortcuts}</div>`;
+                const bal=Number(state.data.balance||0), isGuest=state.isGuest;
+                const modules=state.settings.modules||{};
+                const defaults=[
+                    {id:'gmail',name:'Gmail Service',icon:'fa-envelope',color:'#e34b4b',page:'gmail_sell',enabled:true},
+                    {id:'facebook',name:'Facebook',icon:'fab fa-facebook',color:'#1877f2',page:'my_job',enabled:true},
+                    {id:'instagram',name:'Instagram',icon:'fab fa-instagram',color:'#d94687',page:'my_job',enabled:true},
+                    {id:'ads',name:'Ads Earn',icon:'fa-rectangle-ad',color:'#16a085',page:'my_job',enabled:true},
+                    {id:'microjob',name:'Micro Job',icon:'fa-briefcase',color:'#d97706',page:'my_job',enabled:true},
+                    {id:'jobpost',name:'Job Post',icon:'fa-user-tie',color:'#8b5cf6',page:'my_job',enabled:true},
+                    {id:'telegram',name:'Telegram',icon:'fab fa-telegram',color:'#159bd7',page:'telegram_tasks',enabled:true},
+                    {id:'youtube',name:'YouTube',icon:'fab fa-youtube',color:'#ef2525',page:'my_job',enabled:true},
+                    {id:'plans',name:'Earning Plans',icon:'fa-crown',color:'#d6a126',page:'premium_plan',enabled:true}
+                ];
+                const catalog=Array.isArray(state.settings.serviceCatalog)&&state.settings.serviceCatalog.length?state.settings.serviceCatalog:defaults;
+                const services=catalog.filter(s=>s.enabled!==false && modules[s.id]!==false);
+                const tile=s=>`<button onclick="${s.link?`window.open('${s.link}','_blank','noopener,noreferrer')`:`app.nav('${s.page||'my_job'}')`}" class="bg-white border border-slate-200 rounded-xl p-3 min-h-[112px] shadow-sm flex flex-col items-center justify-center gap-2 active:scale-[.98]"><i class="${(s.icon||'fa-star').startsWith('fab ')?s.icon:'fas '+(s.icon||'fa-star')}" style="color:${s.color||'#7653e8'};font-size:34px"></i><span class="text-xs font-extrabold text-slate-800 text-center leading-tight">${s.name}</span></button>`;
+                const ref=state.data.refId?`${window.location.origin}/ref/${state.data.refId}`:'';
+                return `<div class="max-w-5xl mx-auto fade-in space-y-4 text-slate-800">
+                    <section class="rounded-xl bg-white border border-slate-200 p-4 flex items-center justify-between shadow-sm"><div><p class="text-xs text-slate-500">Welcome back</p><h2 class="font-extrabold text-lg">${isGuest?'Guest':(state.data.fullname||state.data.username||'Member')}</h2></div><div class="w-11 h-11 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><i class="fas fa-bell text-xl"></i></div></section>
+                    <section class="rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 p-5 text-white shadow-md"><div class="flex justify-between items-start"><div><p class="text-sm font-semibold text-white/80">Current Balance</p><h2 class="text-3xl font-extrabold mt-2">BDT ${bal.toFixed(2)}</h2></div><div class="w-16 h-16 rounded-xl border-2 border-white/40 bg-white/10 flex items-center justify-center"><i class="fas fa-wallet text-3xl"></i></div></div><div class="grid grid-cols-2 gap-3 mt-5"><button onclick="app.nav('payment')" class="rounded-xl border border-white/40 bg-white/10 py-3 font-extrabold"><i class="fas fa-arrow-down mr-2"></i>DEPOSIT</button><button onclick="app.nav('payment')" class="rounded-xl border border-white/40 bg-white/10 py-3 font-extrabold"><i class="fas fa-arrow-up mr-2"></i>WITHDRAW</button></div></section>
+                    <div class="grid grid-cols-2 gap-3"><button onclick="app.nav('telegram_tasks')" class="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-center gap-2 font-bold"><i class="fab fa-telegram text-2xl text-sky-500"></i> Telegram</button><button onclick="app.nav('my_job')" class="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-center gap-2 font-bold"><i class="fab fa-youtube text-2xl text-red-600"></i> YouTube</button></div>
+                    <section class="bg-white rounded-xl border border-slate-200 p-4"><h3 class="font-extrabold text-lg border-l-4 border-violet-500 pl-3">Our Services</h3><div class="grid grid-cols-3 gap-3 mt-4">${services.map(tile).join('')}</div></section>
+                    <section class="bg-white rounded-xl border border-slate-200 p-4"><div class="flex items-center justify-between"><h3 class="font-extrabold">Refer & Earn</h3><span class="text-xs font-bold text-violet-600">৳${Number(state.settings.refBonus||20)} Reward</span></div><div class="flex gap-2 mt-3 bg-slate-50 rounded-lg border p-2"><code class="text-xs flex-1 truncate py-2">${isGuest?'Login to get referral link':ref}</code><button ${isGuest?'disabled':''} data-link="${ref}" onclick="window.copyRef(this)" class="bg-violet-600 text-white rounded-lg px-3 text-xs font-bold">COPY</button></div></section>
+                </div>`;
             },
 
             my_job: () => {
@@ -1013,11 +988,11 @@
                          const todayStr = new Date().toISOString().split('T')[0];
                          const lastClaim = state.data.lastClaimDate || "";
                          const canClaim = lastClaim !== todayStr;
-                         claimHtml = `<div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-5 mb-6 text-white shadow-lg relative overflow-hidden"><div class="relative z-10 flex justify-between items-center"><div><p class="text-xs text-indigo-100 uppercase font-bold tracking-wider">${window.appLang.t('daily_claim')}</p><h3 class="text-xl font-bold">${planName}</h3><p class="text-sm mt-1 opacity-90">${dailyAmount.toFixed(2)}৳ / Day</p></div><button onclick="window.claimDaily(${dailyAmount})" ${!canClaim ? 'disabled' : ''} class="px-5 py-2 ${canClaim ? 'bg-white text-indigo-600 hover:bg-gray-100' : 'bg-gray-400 text-gray-200 cursor-not-allowed'} rounded-lg font-bold shadow-md transition">${canClaim ? window.appLang.t('claim_now') : window.appLang.t('claimed')}</button></div><i class="fas fa-calendar-check absolute -right-4 -bottom-4 text-8xl text-white opacity-10"></i></div>`;
+                         claimHtml = `<div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-5 mb-6 text-white shadow-lg relative overflow-hidden"><div class="relative z-10 flex justify-between items-center"><div><p class="text-xs text-indigo-100 uppercase font-bold tracking-wider">${window.appLang.t('daily_claim')}</p><h3 class="text-xl font-bold">${planName}</h3><p class="text-sm mt-1 opacity-90">${dailyAmount.toFixed(2)}৳ / Day</p></div><button onclick="window.claimDaily()" ${!canClaim ? 'disabled' : ''} class="px-5 py-2 ${canClaim ? 'bg-white text-indigo-600 hover:bg-gray-100' : 'bg-gray-400 text-gray-200 cursor-not-allowed'} rounded-lg font-bold shadow-md transition">${canClaim ? window.appLang.t('claim_now') : window.appLang.t('claimed')}</button></div><i class="fas fa-calendar-check absolute -right-4 -bottom-4 text-8xl text-white opacity-10"></i></div>`;
                     }
                 }
 
-                const tasks = state.tasks.basic || {}; 
+                const tasks = Object.fromEntries(Object.entries(state.tasks.basic || {}).filter(([id,t]) => t.enabled !== false)); 
                 const today = new Date().toISOString().split('T')[0];
                 const lastTaskDate = state.data.lastTaskDate || "";
                 
@@ -1180,7 +1155,13 @@
                      return `<div class="text-center mt-20 fade-in"><div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400 text-2xl"><i class="fas fa-box-open"></i></div><h3 class="text-xl font-bold text-gray-600" data-i18n="no_plan_found">${window.appLang.t('no_plan_found')}</h3></div>`;
                 }
 
-                return `<div class="max-w-4xl mx-auto grid md:grid-cols-2 gap-6 fade-in">
+                const activeDetails = state.data.activePlanDetails || {};
+                const activeUntil = state.data.activePlanUntil ? new Date(state.data.activePlanUntil).toLocaleDateString() : '';
+                const today = new Date().toISOString().slice(0,10);
+                const claimedToday = state.data.lastClaimDate === today;
+                const activePanel = currentPlan ? `<section class="md:col-span-2 bg-gradient-to-br from-blue-700 to-indigo-800 text-white rounded-3xl p-5 shadow-lg"><p class="text-xs text-blue-100 font-bold tracking-widest">YOUR ACTIVE PLAN</p><h3 class="text-2xl font-extrabold mt-1">${currentPlan}</h3><div class="grid grid-cols-3 gap-2 mt-4"><div class="bg-white/10 rounded-xl p-3"><p class="text-[10px] text-blue-100">DAILY REWARD</p><b>৳${Number(activeDetails.dailyIncome||0).toFixed(2)}</b></div><div class="bg-white/10 rounded-xl p-3"><p class="text-[10px] text-blue-100">DAYS CLAIMED</p><b>${Number(state.data.planDaysClaimed||0)} / ${Number(activeDetails.durationDays||0)}</b></div><div class="bg-white/10 rounded-xl p-3"><p class="text-[10px] text-blue-100">EXPIRES</p><b>${activeUntil||'—'}</b></div></div><button onclick="window.claimDaily()" ${claimedToday?'disabled':''} class="mt-4 w-full rounded-xl py-3 font-extrabold ${claimedToday?'bg-white/20 text-white/70':'bg-white text-blue-700'}">${claimedToday?'TODAY REWARD CLAIMED':'CLAIM TODAY’S REWARD · ৳'+Number(activeDetails.dailyIncome||0).toFixed(2)}</button></section>` : '';
+                return `<div class="max-w-4xl mx-auto grid md:grid-cols-2 gap-4 fade-in">${activePanel}
+
                     ${plans.map(p => {
                         const isPurchased = currentPlan === p.name;
                         const isPending = state.pendingPlan && !isPurchased; 
@@ -1204,10 +1185,9 @@
 
             payment: () => {
                 if (state.isGuest) return ui.authBlock();
-                const methods = [
-                    { name: 'Bkash', img: 'https://iili.io/fWimLbt.jpg' },
-                    { name: 'Nagad', img: 'https://iili.io/fWimtXn.jpg' }
-                ];
+                const methods = Array.isArray(state.settings.paymentMethods) && state.settings.paymentMethods.length
+                    ? state.settings.paymentMethods.filter(m=>m.enabled!==false)
+                    : [{name:'Bkash',number:(state.settings.paymentInfo||{}).bkash||'',type:'Personal'},{name:'Nagad',number:(state.settings.paymentInfo||{}).nagad||'',type:'Personal'}];
                 const minDeposit = state.settings.minDepositAmount || 50;
                 const minWithdraw = state.settings.minWithdrawAmount || 100;
                 const refs = state.data.referrals ? Object.keys(state.data.referrals).length : 0;
@@ -1229,8 +1209,8 @@
                             <label class="block text-sm font-semibold text-gray-700">Deposit Amount (৳)</label>
                             <input id="deposit-amount" type="number" min="${minDeposit}" max="100000" step="0.01" required class="w-full p-3 border border-gray-200 rounded-xl" placeholder="Minimum ৳${minDeposit}">
                             <label class="block text-sm font-semibold text-gray-700">Payment Method</label>
-                            <select id="deposit-method" class="w-full p-3 border border-gray-200 rounded-xl"><option value="Bkash">bKash</option><option value="Nagad">Nagad</option></select>
-                            <div class="rounded-xl bg-gray-50 border p-4"><p class="text-xs text-gray-500">Send money to merchant number configured by Admin</p><p class="text-lg font-extrabold text-indigo-700 mt-1">bKash: ${(state.settings.paymentInfo || {}).bkash || 'Not configured'}</p><p class="text-lg font-extrabold text-orange-600">Nagad: ${(state.settings.paymentInfo || {}).nagad || 'Not configured'}</p></div>
+                            <select id="deposit-method" class="w-full p-3 border border-gray-200 rounded-xl">${methods.map(m=>`<option value="${m.name}">${m.name} · ${m.type||'Personal'}</option>`).join('')}</select>
+                            <div id="deposit-method-info" class="rounded-xl bg-gray-50 border p-4"><p class="text-xs text-gray-500">Send money to the selected payment number</p>${methods.map(m=>`<p class="text-base font-extrabold text-indigo-700 mt-1">${m.name}: ${m.number||'Not configured'}</p>`).join('')}</div>
                             <label class="block text-sm font-semibold text-gray-700">Transaction ID</label>
                             <input id="deposit-trx" required maxlength="100" class="w-full p-3 border border-gray-200 rounded-xl" placeholder="Enter transaction ID">
                             <label class="block text-sm font-semibold text-gray-700">Payment Screenshot (required)</label>
@@ -1387,6 +1367,17 @@
             btn.disabled = false;
         };
 
+        window.claimDaily = async () => {
+            if (!state.userUid) return authHandler.trigger();
+            try {
+                const response=await fetch('/api/claim_daily',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:state.userUid})});
+                const result=await response.json();
+                if(!response.ok||!result.success) return alert(result.message||'Daily reward unavailable');
+                alert('Daily reward added to your wallet.');
+                await app.fetchData(); app.nav('premium_plan',true);
+            } catch(e){alert('Network error. Please try again.');}
+        };
+
         window.buyPlan = async (planName) => {
             if (!state.userUid) return authHandler.trigger();
             if (!confirm(`Purchase ${planName} using your wallet balance?`)) return;
@@ -1528,23 +1519,6 @@
                     alert(d.message);
                 }
             } catch(e) { alert("Error"); }
-        };
-
-        window.claimDaily = async (amount) => {
-            try {
-                const res = await fetch('/api/claim_daily', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ uid: state.userUid, amount: amount })
-                });
-                const d = await res.json();
-                if(d.success) {
-                    alert("Daily Income Claimed!");
-                    window.location.reload();
-                } else {
-                    alert(d.message);
-                }
-            } catch(e) { alert("Error claiming reward"); }
         };
 
         window.claimRefReward = async (target, reward) => {
