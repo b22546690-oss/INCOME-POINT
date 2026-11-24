@@ -930,14 +930,13 @@
                 const bal=Number(state.data.balance||0), isGuest=state.isGuest;
                 const modules=state.settings.modules||{};
                 const defaults=[
-                    {id:'gmail',name:'Gmail Service',icon:'fa-envelope',color:'#e34b4b',page:'gmail_sell',enabled:true},
-                    {id:'facebook',name:'Facebook',icon:'fab fa-facebook',color:'#1877f2',page:'my_job',enabled:true},
-                    {id:'instagram',name:'Instagram',icon:'fab fa-instagram',color:'#d94687',page:'my_job',enabled:true},
-                    {id:'ads',name:'Ads Earn',icon:'fa-rectangle-ad',color:'#16a085',page:'my_job',enabled:true},
-                    {id:'microjob',name:'Micro Job',icon:'fa-briefcase',color:'#d97706',page:'my_job',enabled:true},
-                    {id:'jobpost',name:'Job Post',icon:'fa-user-tie',color:'#8b5cf6',page:'my_job',enabled:true},
-                    {id:'telegram',name:'Telegram',icon:'fab fa-telegram',color:'#159bd7',page:'telegram_tasks',enabled:true},
-                    {id:'youtube',name:'YouTube',icon:'fab fa-youtube',color:'#ef2525',page:'my_job',enabled:true},
+                    {id:'gmail',name:'Gmail Sell',icon:'fa-envelope',color:'#e34b4b',page:'gmail_sell',enabled:true},
+                    {id:'facebook',name:'Facebook Sell',icon:'fab fa-facebook',color:'#1877f2',page:'facebook_sell',enabled:true},
+                    {id:'instagram',name:'Instagram Sell',icon:'fab fa-instagram',color:'#d94687',page:'instagram_sell',enabled:true},
+                    {id:'microjob',name:'Micro Job',icon:'fa-briefcase',color:'#d97706',page:'micro_jobs',enabled:true},
+                    {id:'telegram',name:'Telegram Join',icon:'fab fa-telegram',color:'#159bd7',page:'telegram_tasks',enabled:true},
+                    {id:'jobpost',name:'Post a Job',icon:'fa-user-tie',color:'#8b5cf6',page:'job_post',enabled:true},
+                    {id:'typing',name:'Typing Job',icon:'fa-keyboard',color:'#0f9d88',page:'typing_jobs',enabled:true},
                     {id:'plans',name:'Earning Plans',icon:'fa-crown',color:'#d6a126',page:'premium_plan',enabled:true}
                 ];
                 const catalog=Array.isArray(state.settings.serviceCatalog)&&state.settings.serviceCatalog.length?state.settings.serviceCatalog:defaults;
@@ -953,87 +952,13 @@
                 </div>`;
             },
 
-            my_job: () => {
-                if (state.isGuest) return ui.authBlock();
-                
-
-                const todayActiveRefs = state.data.todayActiveRefs || 0; 
-                
-                let refHtml = `<div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 mb-6 relative overflow-hidden"><h3 class="font-bold text-gray-800 mb-4 flex items-center"><i class="fas fa-trophy text-yellow-500 mr-2"></i> ${window.appLang.t('ref_challenge')}</h3><div class="grid grid-cols-3 gap-2">`;
-                
-                refHtml += state.refChallenges.map((tier, idx) => {
-                    const achieved = todayActiveRefs >= tier.target;
-                    const claimed = state.data.dailyRefClaims && state.data.dailyRefClaims[tier.target];
-                    let btnClass = achieved && !claimed ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-400 cursor-not-allowed";
-                    let btnTxt = claimed ? window.appLang.t('claimed') : window.appLang.t('claim_now');
-                    
-                    return `<div class="text-center p-2 bg-gray-50 rounded-lg border border-gray-200">
-                        <p class="text-xs font-bold text-gray-500 mb-1">${tier.target} ${window.appLang.t('active_ref')}</p>
-                        <p class="text-lg font-bold text-indigo-600 mb-2">${tier.reward}৳</p>
-                        <button onclick="window.claimRefReward(${tier.target}, ${tier.reward})" ${!achieved || claimed ? 'disabled' : ''} class="w-full py-1 rounded text-xs font-bold ${btnClass}">${btnTxt}</button>
-                    </div>`;
-                }).join('');
-                refHtml += `</div></div>`;
-
-                const gmailHtml = `<div onclick="app.nav('gmail_sell')" class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 mb-6 flex items-center justify-between cursor-pointer hover:shadow-md transition group"><div class="flex items-center gap-4"><div class="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-xl group-hover:bg-red-500 group-hover:text-white transition"><i class="fas fa-envelope"></i></div><div><h3 class="font-bold text-gray-800 text-lg">${window.appLang.t('gmail_sell')}</h3><p class="text-xs text-gray-500">Sell Gmail & Earn Money</p></div></div><i class="fas fa-chevron-right text-gray-300"></i></div>`;
-
-                let claimHtml = '';
-                if(state.data.premiumPlan) {
-                    const planName = state.data.premiumPlan;
-                    const plan = Object.values(state.plans).find(p => p.name === planName);
-                    if(plan) {
-                         const profit = plan.price * 0.10; 
-                         const totalReturn = plan.price + profit;
-                         const dailyAmount = totalReturn / parseInt(plan.durationDays);
-                         const todayStr = new Date().toISOString().split('T')[0];
-                         const lastClaim = state.data.lastClaimDate || "";
-                         const canClaim = lastClaim !== todayStr;
-                         claimHtml = `<div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-5 mb-6 text-white shadow-lg relative overflow-hidden"><div class="relative z-10 flex justify-between items-center"><div><p class="text-xs text-indigo-100 uppercase font-bold tracking-wider">${window.appLang.t('daily_claim')}</p><h3 class="text-xl font-bold">${planName}</h3><p class="text-sm mt-1 opacity-90">${dailyAmount.toFixed(2)}৳ / Day</p></div><button onclick="window.claimDaily()" ${!canClaim ? 'disabled' : ''} class="px-5 py-2 ${canClaim ? 'bg-white text-indigo-600 hover:bg-gray-100' : 'bg-gray-400 text-gray-200 cursor-not-allowed'} rounded-lg font-bold shadow-md transition">${canClaim ? window.appLang.t('claim_now') : window.appLang.t('claimed')}</button></div><i class="fas fa-calendar-check absolute -right-4 -bottom-4 text-8xl text-white opacity-10"></i></div>`;
-                    }
-                }
-
-                const tasks = Object.fromEntries(Object.entries(state.tasks.basic || {}).filter(([id,t]) => t.enabled !== false)); 
-                const today = new Date().toISOString().split('T')[0];
-                const lastTaskDate = state.data.lastTaskDate || "";
-                
-                const taskList = Object.entries(tasks).map(([id, t]) => {
-                    const isCompleted = state.data.completedTasks && state.data.completedTasks[id];
-                    const dailyLimitReached = lastTaskDate === today;
-                    const isDisabled = isCompleted || dailyLimitReached;
-                    
-                    const btnClass = isDisabled 
-                        ? "bg-gray-800 text-gray-500 cursor-not-allowed btn-blocked" 
-                        : "bg-indigo-100 text-indigo-600 hover:bg-indigo-600 hover:text-white shadow";
-                    
-                    const btnAction = isDisabled ? "" : `onclick="window.runTask('${id}', '${t.link}', ${t.reward}, this)"`;
-                    
-                    return `
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between gap-3 transition hover:shadow-md">
-                        <div class="flex items-center gap-3 flex-1 overflow-hidden">
-                            <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center flex-shrink-0">
-                                <i class="fas fa-clipboard-list"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="font-bold text-gray-800 truncate">${t.name}</p>
-                                <p class="text-green-600 font-bold text-sm">+${t.reward}৳</p>
-                            </div>
-                        </div>
-                        <button ${btnAction} ${isDisabled ? 'disabled' : ''} class="w-10 h-10 rounded-full transition flex items-center justify-center text-lg flex-shrink-0 ${btnClass}">
-                            <i class="fas ${isDisabled ? 'fa-ban' : 'fa-play'}"></i>
-                        </button>
-                    </div>`;
-                }).join('');
-
-                return `<div class="max-w-2xl mx-auto fade-in">${refHtml}${gmailHtml}${claimHtml}<div class="space-y-3">${taskList || `<div class="text-center text-gray-400 mt-10">No Tasks Available</div>`}</div></div>`;
-            },
-
-            telegram_tasks: () => {
-                if (state.isGuest) return ui.authBlock();
-                const items = state.tasks.telegram || {};
-                if (!Object.keys(items).length) return `<div class="glass-panel p-6 text-center"><i class="fab fa-telegram-plane text-4xl text-sky-500 mb-3"></i><h3 class="font-bold text-lg">Telegram Channel Tasks</h3><p class="text-sm text-gray-500 mt-2">No Telegram tasks are available right now.</p></div>`;
-                return `<div class="space-y-4 fade-in"><h2 class="text-xl font-extrabold text-gray-800">Telegram Channel Tasks</h2>${Object.entries(items).map(([id,t]) => `<div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between gap-3"><div class="min-w-0"><p class="font-bold text-gray-800">${t.title || 'Join Telegram Channel'}</p><p class="text-xs text-gray-500 mt-1">${t.description || 'Join the channel and follow the task instructions.'}</p><p class="font-bold text-emerald-600 mt-2">৳${Number(t.reward || 0).toFixed(2)}</p></div><button onclick="window.runTelegramTask('${id}', '${t.link || ''}')" class="shrink-0 px-4 py-2 rounded-xl bg-sky-600 text-white font-bold">Join & Submit</button></div>`).join('')}</div>`;
-            },
-
+            facebook_sell: () => window.renderAccountSellPage('Facebook'),
+            instagram_sell: () => window.renderAccountSellPage('Instagram'),
+            micro_jobs: () => window.renderWorkListPage('micro'),
+            typing_jobs: () => window.renderWorkListPage('typing'),
+            job_post: () => { const html=window.renderJobPostPage(); setTimeout(()=>window.loadMyJobReviews(),0); return html; },
+            my_job: () => window.renderWorkListPage('micro'),
+            telegram_tasks: () => window.renderWorkListPage('telegram'),
             gmail_sell: () => {
                 if (state.isGuest) return ui.authBlock();
                 
@@ -1647,6 +1572,52 @@
             });
             window.location.reload();
         };
+
+        window.renderAccountSellPage = (platform) => {
+            if(state.isGuest) return ui.authBlock();
+            return `<div class="max-w-xl mx-auto space-y-4"><section class="rounded-2xl bg-white border p-5"><h2 class="text-xl font-extrabold">${platform} Account Listing</h2><p class="text-sm text-slate-500 mt-1">Submit a contact identifier and ownership proof. Never submit passwords, 2FA codes, cookies, recovery codes or private keys.</p><form onsubmit="window.submitAccountListing(event,'${platform}')" class="space-y-3 mt-4"><label class="block text-sm font-bold">Email address or phone number</label><input name="contact" required class="w-full border rounded-xl p-3" placeholder="Email or phone"><label class="block text-sm font-bold">Profile / account URL</label><input name="profileUrl" type="url" required class="w-full border rounded-xl p-3" placeholder="https://..."><label class="block text-sm font-bold">Ownership proof details</label><textarea name="proof" required maxlength="1000" class="w-full border rounded-xl p-3" placeholder="Describe how you can verify ownership"></textarea><button class="w-full rounded-xl bg-violet-600 text-white font-bold py-3">Submit for Review</button></form></section></div>`;
+        };
+        window.submitAccountListing = async (event, platform) => {
+            event.preventDefault(); const f=new FormData(event.target);
+            const r=await fetch('/api/earning/account-listing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:state.userUid,platform,contact:f.get('contact'),profileUrl:f.get('profileUrl'),proof:f.get('proof')})});
+            const d=await r.json(); alert(d.message|| (d.success?'Submitted':'Submission failed')); if(d.success) event.target.reset();
+        };
+        window.renderWorkListPage = (kind) => {
+            if(state.isGuest) return ui.authBlock();
+            const title=kind==='typing'?'Typing Jobs':'Available Micro Jobs';
+            const items=state.tasks||{};
+            const list=Object.entries(items).filter(([id,x])=>x.kind===kind&&x.status==='approved'&&x.enabled!==false);
+            return `<div class="max-w-3xl mx-auto space-y-3"><h2 class="text-xl font-extrabold">${title}</h2>${list.length?list.map(([id,x])=>`<article class="bg-white border rounded-2xl p-4"><h3 class="font-bold">${x.title}</h3><p class="text-sm text-slate-600 mt-1">${x.description||''}</p>${kind==='typing'?`<div class="bg-slate-50 rounded-xl p-3 my-3 whitespace-pre-wrap">${x.text||''}</div>`:''}<p class="text-sm font-bold text-violet-700 mt-2">Reward ৳${Number(x.reward||0).toFixed(2)} · Limit ${x.perUserLimit||1}</p><form class="mt-3 space-y-2" onsubmit="window.submitWorkProof(event,'${id}')"><textarea name="proof" required class="w-full border rounded-xl p-3" placeholder="${kind==='typing'?'Type the requested text here':'Describe completion / proof'}"></textarea><button class="bg-violet-600 text-white rounded-xl px-4 py-2 font-bold">Submit Work</button></form></article>`).join(''):'<div class="bg-white border rounded-2xl p-5 text-slate-500">No active jobs at the moment.</div>'}</div>`;
+        };
+        window.submitWorkProof = async (event, taskId) => {
+            event.preventDefault(); const proof=new FormData(event.target).get('proof');
+            const r=await fetch('/api/earning/submit-work',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:state.userUid,taskId,proof})});
+            const d=await r.json(); alert(d.message|| (d.success?'Submitted for review':'Submission failed')); if(d.success) event.target.reset();
+        };
+        window.renderJobPostPage = () => {
+            if(state.isGuest) return ui.authBlock();
+            return `<div class="max-w-xl mx-auto space-y-4"><section class="bg-white border rounded-2xl p-5"><h2 class="text-xl font-extrabold">Post a Job</h2><p class="text-sm text-slate-500 mt-1">Your job is published in Micro Jobs after admin approval. Budget is reserved from your wallet.</p><form class="space-y-3 mt-4" onsubmit="window.createUserJob(event)"><input name="title" required maxlength="100" class="w-full border rounded-xl p-3" placeholder="Job title"><textarea name="description" required maxlength="2000" class="w-full border rounded-xl p-3" placeholder="Describe the work and proof required"></textarea><input name="reward" required type="number" min="1" step=".01" class="w-full border rounded-xl p-3" placeholder="Reward per worker (BDT)"><input name="slots" required type="number" min="1" max="500" class="w-full border rounded-xl p-3" placeholder="Number of workers"><button class="w-full bg-violet-600 text-white rounded-xl py-3 font-bold">Submit Job for Admin Approval</button></form></section><section class="bg-white border rounded-2xl p-5"><h3 class="font-extrabold">My Job Posts & Worker Reviews</h3><div id="my-job-reviews" class="mt-3 text-sm text-slate-500">Loading your jobs…</div></section></div>`;
+        };
+        window.createUserJob = async (event) => {
+            event.preventDefault(); const f=new FormData(event.target);
+            const r=await fetch('/api/earning/create-job',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:state.userUid,title:f.get('title'),description:f.get('description'),reward:f.get('reward'),slots:f.get('slots')})});
+            const d=await r.json(); alert(d.message|| (d.success?'Job sent for approval':'Could not post job')); if(d.success) event.target.reset();
+        };
+        window.loadMyJobReviews = async () => {
+            const el=document.getElementById('my-job-reviews'); if(!el||!state.userUid)return;
+            const r=await fetch('/api/earning/my-jobs?uid='+encodeURIComponent(state.userUid)); const d=await r.json();
+            if(!r.ok){el.textContent=d.message||'Unable to load jobs';return;}
+            const jobs=d.jobs||[], reviews=d.pendingReviews||[];
+            el.innerHTML=(jobs.map(j=>`<div class="border rounded-xl p-3 mb-2"><b>${j.title}</b><p>Status: ${j.status}</p></div>`).join('')||'<p>No job posts yet.</p>')+
+            (reviews.length?'<h4 class="font-bold mt-4 mb-2">Worker submissions awaiting your decision</h4>':'')+
+            reviews.map(s=>`<div class="border rounded-xl p-3 mb-2"><p>Task: ${s.taskId} · Worker: ${s.userId}</p><p class="my-2 whitespace-pre-wrap">${s.proof}</p><button onclick="window.reviewMyJobSubmission('${s.id}','approve')" class="bg-green-600 text-white px-3 py-2 rounded mr-2">Approve</button><button onclick="window.reviewMyJobSubmission('${s.id}','reject')" class="bg-red-600 text-white px-3 py-2 rounded">Reject</button></div>`).join('');
+        };
+        window.reviewMyJobSubmission = async (submissionId,decision) => {
+            const r=await fetch('/api/earning/review-job-submission',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:state.userUid,submissionId,decision})});
+            const d=await r.json(); alert(d.message||'Review complete'); if(d.success) window.loadMyJobReviews();
+        };
+
+
 
         window.copyRef = (btn) => {
             const link = btn.dataset.link;
