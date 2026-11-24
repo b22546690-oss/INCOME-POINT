@@ -162,6 +162,7 @@
                 <a href="#gmail-management" class="nav-link flex items-center p-3 rounded-md space-x-3"><i class="fas fa-envelope w-5"></i><span>Gmail ম্যানেজ</span></a>
                 <a href="#requests" class="nav-link flex items-center p-3 rounded-md space-x-3"><i class="fas fa-inbox w-5"></i><span>অনুরোধসমূহ</span></a>
                 <a href="#tasks" class="nav-link flex items-center p-3 rounded-md space-x-3"><i class="fas fa-tasks w-5"></i><span>টাস্ক ম্যানেজ</span></a>
+                <a href="#earning-workflows" class="nav-link flex items-center p-3 rounded-md space-x-3"><i class="fas fa-layer-group w-5"></i><span>আলাদা কাজ ও জব রিভিউ</span></a>
                 <a href="#plans" class="nav-link flex items-center p-3 rounded-md space-x-3"><i class="fas fa-star w-5"></i><span>প্ল্যান ম্যানেজ</span></a>
                 <a href="#referrals" class="nav-link flex items-center p-3 rounded-md space-x-3"><i class="fas fa-user-friends w-5"></i><span>রেফারেল</span></a>
                 <a href="#settings" class="nav-link flex items-center p-3 rounded-md space-x-3"><i class="fas fa-cog w-5"></i><span>সেটিংস</span></a>
@@ -671,6 +672,25 @@
                         </button>
                     </form>
                 </div>
+                <div id="earning-workflows" class="page">
+                    <h1 class="text-2xl font-bold mb-4">আলাদা কাজ তৈরি ও Job Review</h1>
+                    <div class="bg-white rounded-xl shadow p-5 mb-5">
+                        <h2 class="font-bold text-lg mb-3">নতুন Micro / Telegram / Typing Task</h2>
+                        <form id="earning-task-form" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <select id="ew-kind" class="border rounded-lg p-3"><option value="micro">Micro Job</option><option value="telegram">Telegram Join</option><option value="typing">Typing Job</option></select>
+                            <input id="ew-title" required maxlength="100" class="border rounded-lg p-3" placeholder="Task title">
+                            <input id="ew-reward" required type="number" min="0.01" step="0.01" class="border rounded-lg p-3" placeholder="Reward (BDT)">
+                            <input id="ew-limit" required type="number" min="1" value="1" class="border rounded-lg p-3" placeholder="Per-user completion limit">
+                            <input id="ew-link" type="url" class="border rounded-lg p-3" placeholder="Task / Telegram link (optional)">
+                            <textarea id="ew-description" class="border rounded-lg p-3" placeholder="Instructions / description"></textarea>
+                            <textarea id="ew-text" class="border rounded-lg p-3 md:col-span-2" placeholder="Typing text (Typing Job only)"></textarea>
+                            <button class="bg-indigo-600 text-white rounded-lg p-3 font-bold md:col-span-2">Publish Task</button>
+                        </form>
+                    </div>
+                    <div class="bg-white rounded-xl shadow p-5 mb-5"><h2 class="font-bold text-lg mb-3">User Job Posts Awaiting Approval</h2><div id="ew-pending-jobs" class="space-y-3 text-sm">Loading…</div></div>
+                    <div class="bg-white rounded-xl shadow p-5 mb-5"><h2 class="font-bold text-lg mb-3">Work Submissions Awaiting Review</h2><div id="ew-pending-submissions" class="space-y-3 text-sm">Loading…</div></div>
+                    <div class="bg-white rounded-xl shadow p-5"><h2 class="font-bold text-lg mb-3">Facebook / Instagram Listings</h2><div id="ew-account-listings" class="space-y-3 text-sm">Loading…</div></div>
+                </div>
             </main>
         </div>
     </div>
@@ -708,8 +728,7 @@
 
     <script>
         // --- Firebase Configuration ---
-        const firebaseConfig = {
-  apiKey: "AIzaSyDPPctCIN1k9RIoJrjF1_kM2nnxx83yIcc",
+        apiKey: "AIzaSyDPPctCIN1k9RIoJrjF1_kM2nnxx83yIcc",
   authDomain: "income-point-7ddf3.firebaseapp.com",
   databaseURL: "https://income-point-7ddf3-default-rtdb.firebaseio.com",
   projectId: "income-point-7ddf3",
@@ -782,7 +801,7 @@
                 const adminSnapshot = await db.ref('admin/password').once('value');
                 const storedPassword = adminSnapshot.val();
                 
-                if (storedPassword === password || password === '50') { // Fallback for initial setup
+                if (storedPassword && storedPassword === password) {
                     loginScreen.style.display = 'none';
                     adminPanel.style.display = 'block';
                     initializeApp();
@@ -792,16 +811,10 @@
                     setTimeout(() => loginError.style.display = 'none', 2000);
                 }
             } catch (error) {
-                // If no password in DB, use default
-                if (password === '50') {
-                    loginScreen.style.display = 'none';
-                    adminPanel.style.display = 'block';
-                    initializeApp();
-                } else {
-                    const loginError = document.getElementById('login-error');
-                    loginError.style.display = 'block';
-                    setTimeout(() => loginError.style.display = 'none', 2000);
-                }
+                const loginError = document.getElementById('login-error');
+                loginError.textContent = 'Login failed. Configure the admin password securely in Firebase first.';
+                loginError.style.display = 'block';
+                setTimeout(() => loginError.style.display = 'none', 3500);
             } finally {
                 hideLoader();
             }
@@ -836,6 +849,7 @@
                     }
                     
                     // Load specific data when switching pages
+                    if (targetId === 'earning-workflows') { loadEarningWorkflowQueues(); }
                     if (targetId === 'gmail-management') {
                         loadGmailSubmissions();
                     } else if (targetId === 'transactions') {
@@ -2667,6 +2681,46 @@
                 initializeApp();
             }
         });
-    </script>
+    
+        // INCOME-POINT: dedicated task creation and approval workflow.
+        async function loadEarningWorkflowQueues() {
+            const jobsEl=document.getElementById('ew-pending-jobs');
+            const subsEl=document.getElementById('ew-pending-submissions');
+            const listingsEl=document.getElementById('ew-account-listings');
+            if(!jobsEl||!subsEl) return;
+            const [jobsSnap,subsSnap,listingsSnap]=await Promise.all([db.ref('userJobs').once('value'),db.ref('workSubmissions').once('value'),db.ref('accountListings').once('value')]);
+            const jobs=jobsSnap.val()||{}, subs=subsSnap.val()||{}, listings=listingsSnap.val()||{};
+            const pendingJobs=Object.entries(jobs).filter(([k,v])=>v.status==='pending');
+            jobsEl.innerHTML=pendingJobs.length?pendingJobs.map(([id,j])=>`<div class="border rounded-lg p-3"><b>${j.title||'Untitled Job'}</b><p>${j.description||''}</p><p>Owner: ${j.ownerId} · Reward ৳${j.reward} × ${j.slots}</p><button onclick="reviewIncomeJob('${id}','approve')" class="bg-green-600 text-white px-3 py-2 rounded mr-2">Approve & Publish</button><button onclick="reviewIncomeJob('${id}','reject')" class="bg-red-600 text-white px-3 py-2 rounded">Reject</button></div>`).join(''):'No pending user job posts.';
+            const pendingSubs=Object.entries(subs).filter(([k,v])=>v.status==='pending');
+            subsEl.innerHTML=pendingSubs.length?pendingSubs.map(([id,s])=>`<div class="border rounded-lg p-3"><b>${s.taskId}</b><p>User: ${s.userId} · Reward ৳${s.reward}</p><p class="break-words">${s.proof||''}</p><button onclick="reviewIncomeSubmission('${id}','approve')" class="bg-green-600 text-white px-3 py-2 rounded mr-2">Approve</button><button onclick="reviewIncomeSubmission('${id}','reject')" class="bg-red-600 text-white px-3 py-2 rounded">Reject</button></div>`).join(''):'No pending work submissions.';
+            const pendingListings=Object.entries(listings).filter(([k,v])=>v.status==='pending');
+            listingsEl.innerHTML=pendingListings.length?pendingListings.map(([id,x])=>`<div class="border rounded-lg p-3"><b>${x.platform} · ${x.contact}</b><p>${x.profileUrl}</p><p>${x.ownershipProof}</p><button onclick="reviewAccountListing('${id}','approved')" class="bg-green-600 text-white px-3 py-2 rounded mr-2">Approve</button><button onclick="reviewAccountListing('${id}','rejected')" class="bg-red-600 text-white px-3 py-2 rounded">Reject</button></div>`).join(''):'No pending account listings.';
+        }
+        document.getElementById('earning-task-form')?.addEventListener('submit',async e=>{
+            e.preventDefault();
+            const task={kind:document.getElementById('ew-kind').value,title:document.getElementById('ew-title').value.trim(),reward:Number(document.getElementById('ew-reward').value),perUserLimit:Number(document.getElementById('ew-limit').value),link:document.getElementById('ew-link').value.trim(),description:document.getElementById('ew-description').value.trim(),text:document.getElementById('ew-text').value,status:'approved',enabled:true,createdAt:new Date().toISOString()};
+            if(!task.title||task.reward<=0||task.perUserLimit<1) return alert('Check task fields.');
+            await db.ref('tasks').push(task); e.target.reset(); alert('Task published.'); loadEarningWorkflowQueues();
+        });
+        window.reviewIncomeJob=async(id,decision)=>{
+            const ref=db.ref('userJobs/'+id), snap=await ref.once('value'), job=snap.val(); if(!job)return;
+            if(decision==='approve'){
+                const task={kind:'micro',title:job.title,description:job.description,reward:job.reward,perUserLimit:1,status:'approved',enabled:true,ownerId:job.ownerId,jobId:id,createdAt:new Date().toISOString()};
+                const taskRef=await db.ref('tasks').push(task); await ref.update({status:'approved',publishedTaskId:taskRef.key,reviewedAt:new Date().toISOString()});
+            } else { await ref.update({status:'rejected',reviewedAt:new Date().toISOString()}); await db.ref('users/'+job.ownerId+'/balance').transaction(v=>(Number(v)||0)+Number(job.reservedBudget||0)+Number(job.postFee||0)); }
+            loadEarningWorkflowQueues();
+        };
+        window.reviewAccountListing=async(id,status)=>{ await db.ref('accountListings/'+id).update({status,reviewedAt:new Date().toISOString()}); loadEarningWorkflowQueues(); };
+        window.reviewIncomeSubmission=async(id,decision)=>{
+            const ref=db.ref('workSubmissions/'+id), snap=await ref.once('value'), s=snap.val(); if(!s||s.status!=='pending')return;
+            if(decision==='approve'){
+                await db.ref('users/'+s.userId+'/balance').transaction(v=>(Number(v)||0)+Number(s.reward||0));
+                await db.ref('transactions').push({userId:s.userId,type:'Task Reward',amount:Number(s.reward||0),status:'approved',date:new Date().toISOString(),details:s.taskId});
+                await ref.update({status:'approved',reviewedAt:new Date().toISOString()});
+            } else await ref.update({status:'rejected',reviewedAt:new Date().toISOString()});
+            loadEarningWorkflowQueues();
+        };
+</script>
 </body>
 </html>
