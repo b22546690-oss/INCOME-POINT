@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EarningApp - Make Money Online</title>
+    <title>INCOME-POINT - Make Money Online</title>
     
     <meta name="description" content="Best platform to earn money online by completing tasks, selling emails, and referring friends. Withdraw via Bkash and Nagad.">
     <meta name="keywords" content="earning app, make money online, bkash income, nagad income, bd earning site, gmail sell">
-    <meta name="author" content="EarningApp">
+    <meta name="author" content="INCOME-POINT">
     
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://earningapp.vercel.app/">
-    <meta property="og:title" content="EarningApp - Best Income Source">
+    <meta property="og:title" content="INCOME-POINT - Best Income Source">
     <meta property="og:description" content="Start earning today with trusted payments.">
-    <meta property="og:image" content="https://iili.io/fWs359j.jpg">
+    <meta property="og:image" content="https://iili.io/ofIszvt.jpg">
 
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://earningapp.vercel.app/">
-    <meta property="twitter:title" content="EarningApp">
+    <meta property="twitter:title" content="INCOME-POINT">
     <meta property="twitter:description" content="Start earning today with trusted payments.">
-    <meta property="twitter:image" content="https://iili.io/fWs359j.jpg">
+    <meta property="twitter:image" content="https://iili.io/ofIszvt.jpg">
 
-    <link rel="icon" type="image/jpeg" href="https://iili.io/fWs359j.jpg">
-    <link rel="apple-touch-icon" href="https://iili.io/fWs359j.jpg">
+    <link rel="icon" type="image/jpeg" href="https://iili.io/ofIszvt.jpg">
+    <link rel="apple-touch-icon" href="https://iili.io/ofIszvt.jpg">
     <link rel="manifest" href="/manifest.json">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -242,6 +242,21 @@
             .bottom-sheet { width: 400px; right: 20px; left: auto; border-radius: 20px; }
             .bottom-sheet.expanded { width: 500px; height: 80vh !important; border-radius: 20px; top: auto; }
         }
+
+        html,body { width:100%; max-width:100%; margin:0; }
+        #content-area { min-width:0; overflow-x:hidden; }
+        #content-area section, #content-area .grid, #content-area .flex { min-width:0; }
+        #content-area input, #content-area textarea, #content-area select { max-width:100%; min-width:0; }
+        @media(max-width:767px){
+          body > .flex { width:100%; max-width:100%; }
+          #content-area { padding:12px 12px 100px; }
+          #content-area .grid-cols-3 { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+          #content-area .grid-cols-2 { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+          #content-area button { min-width:0; overflow-wrap:anywhere; }
+          #content-area .grid-cols-3 > button { padding:8px 3px; min-height:100px; }
+          #content-area code { min-width:0; }
+          header { flex-shrink:0; }
+        }
     </style>
 </head>
 <body>
@@ -251,14 +266,14 @@
         <aside id="sidebar" class="fixed inset-y-0 left-0 w-72 sidebar-gradient transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-40 flex flex-col shadow-2xl">
             <div class="h-24 flex items-center px-8 border-b border-indigo-800/50">
                 <div class="w-10 h-10 rounded-xl overflow-hidden mr-3 border-2 border-white/20">
-                    <img src="https://iili.io/fWs359j.jpg" class="app-icon-img">
+                    <img src="https://iili.io/ofIszvt.jpg" class="app-icon-img">
                 </div>
-                <h1 id="sidebar-title" class="text-white font-bold text-xl tracking-wide">EarningApp</h1>
+                <h1 id="sidebar-title" class="text-white font-bold text-xl tracking-wide">INCOME-POINT</h1>
             </div>
 
             <div class="p-6">
                 <div class="flex items-center space-x-4 bg-white/5 p-4 rounded-2xl border border-white/10 cursor-pointer hover:bg-white/10 transition" onclick="app.nav('profile')">
-                    <img id="sidebar-avatar" src="https://iili.io/fWs359j.jpg" class="w-12 h-12 rounded-full border-2 border-indigo-400 object-cover">
+                    <img id="sidebar-avatar" src="https://iili.io/ofIszvt.jpg" class="w-12 h-12 rounded-full border-2 border-indigo-400 object-cover">
                     <div class="overflow-hidden">
                         <p id="sidebar-name" class="text-white font-semibold truncate">Guest</p>
                         <p id="sidebar-status" class="text-xs text-gray-400">Not Logged In</p>
@@ -282,16 +297,16 @@
 
         <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden transition-opacity" onclick="ui.toggleSidebar()"></div>
 
-        <div class="flex-1 flex flex-col md:ml-72 h-full relative bg-[#f3f4f6]">
+        <div class="flex-1 min-w-0 flex flex-col md:ml-72 h-full relative bg-[#f3f4f6]">
             <header class="h-16 bg-white flex items-center justify-between px-5 md:hidden z-20 shadow-sm sticky top-0">
                 <button onclick="ui.toggleSidebar()" class="text-gray-600 text-xl"><i class="fas fa-bars"></i></button>
-                <h2 id="header-title" class="font-bold text-gray-800 text-lg">Dashboard</h2>
+                <h2 id="header-title" class="font-bold text-gray-800 text-lg">INCOME-POINT</h2>
                 <div class="w-9 h-9 rounded-full overflow-hidden border border-gray-200" onclick="app.nav('profile')">
-                    <img id="header-avatar" src="https://iili.io/fWs359j.jpg" class="w-full h-full object-cover">
+                    <img id="header-avatar" src="https://iili.io/ofIszvt.jpg" class="w-full h-full object-cover">
                 </div>
             </header>
 
-            <main id="content-area" class="flex-1 overflow-y-auto p-5 pb-24 md:p-8 md:pb-8">
+            <main id="content-area" class="min-w-0 w-full flex-1 overflow-y-auto p-5 pb-24 md:p-8 md:pb-8">
             </main>
         </div>
 
@@ -344,7 +359,7 @@
             <button onclick="ui.closeModal('auth-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
             
             <div class="text-center mb-6">
-                <img src="https://iili.io/fWs359j.jpg" class="w-20 h-20 rounded-full mx-auto shadow-lg border-4 border-indigo-50 mb-4 object-cover">
+                <img src="https://iili.io/ofIszvt.jpg" class="w-20 h-20 rounded-full mx-auto shadow-lg border-4 border-indigo-50 mb-4 object-cover">
                 <h2 id="auth-title" class="text-2xl font-bold text-gray-800" data-i18n="login_title">Login</h2>
                 <div class="flex justify-center space-x-3 mt-2 text-sm text-gray-500">
                     <span onclick="window.appLang.set('en')" class="cursor-pointer hover:text-indigo-600 font-medium">English</span>
@@ -851,11 +866,11 @@
                     if(d.user) {
                         state.data = d.user;
                         state.settings = d.settings || {};
-                        document.title = state.settings.siteName || 'Cash BD';
+                        document.title = 'INCOME-POINT';
                         const brandTitle = document.getElementById('sidebar-title');
-                        if (brandTitle) brandTitle.textContent = state.settings.siteName || 'Cash BD';
+                        if (brandTitle) brandTitle.textContent = 'INCOME-POINT';
                         const brandLogo = document.querySelector('.app-icon-img');
-                        if (brandLogo && state.settings.siteLogoUrl) brandLogo.src = state.settings.siteLogoUrl;
+                        if (brandLogo) brandLogo.src = "https://iili.io/ofIszvt.jpg";
                         state.tasks = d.tasks || {};
                         state.plans = d.plans || {};
                         state.refChallenges = d.challenges || [];
@@ -873,7 +888,7 @@
             updateUI: () => {
                 const name = state.isGuest ? window.appLang.t('guest') : state.data.username;
                 const status = state.isGuest ? "Login Required" : ('Active');
-                const img = "https://iili.io/fWs359j.jpg";
+                const img = "https://iili.io/ofIszvt.jpg";
 
                 ['sidebar', 'header'].forEach(p => {
                     if (document.getElementById(`${p}-name`)) document.getElementById(`${p}-name`).textContent = name;
@@ -909,7 +924,7 @@
                     payment: window.appLang.t('withdraw'),
                     gmail_sell: window.appLang.t('gmail_sell')
                 };
-                document.getElementById('header-title').textContent = titleMap[page] || window.appLang.t(page);
+                document.getElementById('header-title').textContent = page === 'dashboard' ? 'INCOME-POINT' : (titleMap[page] || window.appLang.t(page));
 
                 setTimeout(() => {
                     content.innerHTML = pages[page] ? pages[page]() : pages.dashboard();
@@ -939,13 +954,13 @@
                     {id:'typing',name:'Typing Job',icon:'fa-keyboard',color:'#0f9d88',page:'typing_jobs',enabled:true},
                     {id:'plans',name:'Earning Plans',icon:'fa-crown',color:'#d6a126',page:'premium_plan',enabled:true}
                 ];
-                const catalog=Array.isArray(state.settings.serviceCatalog)&&state.settings.serviceCatalog.length?state.settings.serviceCatalog:defaults;
+                const catalog=defaults.map(d=>{const c=(Array.isArray(state.settings.serviceCatalog)?state.settings.serviceCatalog:[]).find(x=>x.id===d.id)||{};return {...d,enabled:c.enabled!==false,page:d.page};});
                 const services=catalog.filter(s=>s.enabled!==false && modules[s.id]!==false);
                 const tile=s=>`<button onclick="${s.link?`window.open('${s.link}','_blank','noopener,noreferrer')`:`app.nav('${s.page||'my_job'}')`}" class="bg-white border border-slate-200 rounded-xl p-3 min-h-[112px] shadow-sm flex flex-col items-center justify-center gap-2 active:scale-[.98]"><i class="${(s.icon||'fa-star').startsWith('fab ')?s.icon:'fas '+(s.icon||'fa-star')}" style="color:${s.color||'#7653e8'};font-size:34px"></i><span class="text-xs font-extrabold text-slate-800 text-center leading-tight">${s.name}</span></button>`;
                 const ref=state.data.refId?`${window.location.origin}/ref/${state.data.refId}`:'';
                 return `<div class="max-w-5xl mx-auto fade-in space-y-4 text-slate-800">
                     <section class="rounded-xl bg-white border border-slate-200 p-4 flex items-center justify-between shadow-sm"><div><p class="text-xs text-slate-500">Welcome back</p><h2 class="font-extrabold text-lg">${isGuest?'Guest':(state.data.fullname||state.data.username||'Member')}</h2></div><div class="w-11 h-11 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><i class="fas fa-bell text-xl"></i></div></section>
-                    <section class="rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 p-5 text-white shadow-md"><div class="flex justify-between items-start"><div><p class="text-sm font-semibold text-white/80">Current Balance</p><h2 class="text-3xl font-extrabold mt-2">BDT ${bal.toFixed(2)}</h2></div><div class="w-16 h-16 rounded-xl border-2 border-white/40 bg-white/10 flex items-center justify-center"><i class="fas fa-wallet text-3xl"></i></div></div><div class="grid grid-cols-2 gap-3 mt-5"><button onclick="app.nav('payment')" class="rounded-xl border border-white/40 bg-white/10 py-3 font-extrabold"><i class="fas fa-arrow-down mr-2"></i>DEPOSIT</button><button onclick="app.nav('payment')" class="rounded-xl border border-white/40 bg-white/10 py-3 font-extrabold"><i class="fas fa-arrow-up mr-2"></i>WITHDRAW</button></div></section>
+                    <section class="rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 p-5 text-white shadow-md"><div class="flex justify-between items-start"><div><p class="text-sm font-semibold text-white/80">Current Balance</p><h2 class="text-3xl font-extrabold mt-2">BDT ${bal.toFixed(2)}</h2></div><div class="w-16 h-16 rounded-xl border-2 border-white/40 bg-white/10 flex items-center justify-center"><i class="fas fa-wallet text-3xl"></i></div></div><div class="grid grid-cols-2 gap-3 mt-5"><button onclick="app.nav('deposit')" class="rounded-xl border border-white/40 bg-white/10 py-3 font-extrabold"><i class="fas fa-arrow-down mr-2"></i>DEPOSIT</button><button onclick="app.nav('payment')" class="rounded-xl border border-white/40 bg-white/10 py-3 font-extrabold"><i class="fas fa-arrow-up mr-2"></i>WITHDRAW</button></div></section>
                     <div class="grid grid-cols-2 gap-3"><button onclick="app.nav('telegram_tasks')" class="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-center gap-2 font-bold"><i class="fab fa-telegram text-2xl text-sky-500"></i> Telegram</button><button onclick="app.nav('my_job')" class="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-center gap-2 font-bold"><i class="fab fa-youtube text-2xl text-red-600"></i> YouTube</button></div>
                     <section class="bg-white rounded-xl border border-slate-200 p-4"><h3 class="font-extrabold text-lg border-l-4 border-violet-500 pl-3">Our Services</h3><div class="grid grid-cols-3 gap-3 mt-4">${services.map(tile).join('')}</div></section>
                     <section class="bg-white rounded-xl border border-slate-200 p-4"><div class="flex items-center justify-between"><h3 class="font-extrabold">Refer & Earn</h3><span class="text-xs font-bold text-violet-600">৳${Number(state.settings.refBonus||20)} Reward</span></div><div class="flex gap-2 mt-3 bg-slate-50 rounded-lg border p-2"><code class="text-xs flex-1 truncate py-2">${isGuest?'Login to get referral link':ref}</code><button ${isGuest?'disabled':''} data-link="${ref}" onclick="window.copyRef(this)" class="bg-violet-600 text-white rounded-lg px-3 text-xs font-bold">COPY</button></div></section>
@@ -1108,7 +1123,8 @@
                 </div>`;
             },
 
-            payment: () => {
+            deposit: () => pages.payment(true),
+            payment: (depositOnly=false) => {
                 if (state.isGuest) return ui.authBlock();
                 const methods = Array.isArray(state.settings.paymentMethods) && state.settings.paymentMethods.length
                     ? state.settings.paymentMethods.filter(m=>m.enabled!==false)
@@ -1128,7 +1144,7 @@
                             <div class="bg-white/15 rounded-xl p-3"><p class="text-[10px] text-white/70">Referrals</p><p class="font-bold text-sm">${refs}</p></div>
                         </div>
                     </section>
-                    <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <section style="display:${depositOnly?'block':'none'}" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                         <div class="flex items-center gap-3 mb-4"><div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><i class="fas fa-circle-plus text-xl"></i></div><div><h3 class="font-extrabold text-gray-800">Add Funds / Deposit</h3><p class="text-xs text-gray-500">Deposit first, then purchase an earning plan</p></div></div>
                         <form id="deposit-form" onsubmit="window.submitDeposit(event)" class="space-y-3">
                             <label class="block text-sm font-semibold text-gray-700">Deposit Amount (৳)</label>
@@ -1144,7 +1160,7 @@
                             <button type="submit" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold">Submit Deposit for Review</button>
                         </form>
                     </section>
-                    <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <section style="display:${depositOnly?'none':'block'}" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                         <h3 class="font-extrabold text-gray-800 mb-3">Withdraw Funds</h3><p class="text-xs text-gray-500 mb-3">Minimum withdrawal: ৳${minWithdraw}</p>
                         <div class="grid sm:grid-cols-2 gap-3">${methods.map(m => `<button onclick="window.openWithdrawModal('${m.name}')" class="p-4 rounded-xl border border-gray-200 flex items-center gap-3 hover:border-indigo-400"><img src="${m.img}" class="w-10 h-10 rounded-full object-cover"><span class="font-bold">${m.name} Withdrawal</span></button>`).join('')}</div>
                     </section>
@@ -1194,7 +1210,7 @@
             profile: () => {
                 if (state.isGuest) return ui.authBlock();
                 const d = state.data;
-                const profileImg = d.profilePictureUrl || "https://iili.io/fWs359j.jpg";
+                const profileImg = d.profilePictureUrl || "https://iili.io/ofIszvt.jpg";
                 const joined = d.joinDate ? new Date(d.joinDate).toLocaleDateString() : "—";
                 return `<div class="max-w-xl mx-auto fade-in">
                     <div class="rounded-3xl p-7 text-white relative overflow-hidden mb-5 shadow-xl bg-gradient-to-br from-slate-900 via-indigo-900 to-violet-800">
